@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:id="@+id/tvShizukuStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Shizuku: Checking..."
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvRemapperStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Remapper: Stopped"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/btnToggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start"
+        android:enabled="false"
+        android:layout_marginBottom="32dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Button Mappings"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Button 1 (tip side): Ctrl+Alt\nButton 2 (middle): Space\nButton 3 (far): Ctrl+Z"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:lineSpacingMultiplier="1.4" />
+
+</LinearLayout>
