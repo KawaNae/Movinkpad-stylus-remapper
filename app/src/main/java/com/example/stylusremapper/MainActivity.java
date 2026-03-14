@@ -2,6 +2,7 @@ package com.example.stylusremapper;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -15,8 +16,12 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
@@ -32,6 +37,14 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     private boolean suppressListeners = true;
 
+    // Profile UI
+    private ProfileManager profileManager;
+    private List<ProfileManager.Profile> profiles;
+    private Spinner spinnerProfile;
+    private ArrayAdapter<String> profileAdapter;
+    private List<String> profileNames = new ArrayList<>();
+
+    // Button config
     private static class ButtonConfig {
         Spinner presetSpinner;
         CheckBox cbCtrl, cbAlt, cbShift;
@@ -39,17 +52,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     }
     private final ButtonConfig[] buttons = new ButtonConfig[3];
 
-    // View IDs for each button config
     private static final int[][] VIEW_IDS = {
         {R.id.spinnerPreset1, R.id.cbCtrl1, R.id.cbAlt1, R.id.cbShift1, R.id.spinnerKey1},
         {R.id.spinnerPreset2, R.id.cbCtrl2, R.id.cbAlt2, R.id.cbShift2, R.id.spinnerKey2},
         {R.id.spinnerPreset3, R.id.cbCtrl3, R.id.cbAlt3, R.id.cbShift3, R.id.spinnerKey3},
-    };
-
-    private static final int[] DEFAULT_PRESETS = {
-        MappingPresets.DEFAULT_SWITCH1,
-        MappingPresets.DEFAULT_SWITCH2,
-        MappingPresets.DEFAULT_SWITCH3,
     };
 
     @Override
@@ -62,6 +68,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         btnToggle = findViewById(R.id.btnToggle);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        profileManager = new ProfileManager(prefs);
 
         // Request notification permission for API 33+
         if (Build.VERSION.SDK_INT >= 33) {
@@ -71,7 +78,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
         }
 
+        setupProfileUI();
         setupButtons();
+        loadActiveProfile();
 
         shizukuHelper = new ShizukuHelper();
         shizukuHelper.setCallback(this);
@@ -79,6 +88,170 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
         btnToggle.setOnClickListener(v -> toggleRemapper());
     }
+
+    // --- Profile UI ---
+
+    private void setupProfileUI() {
+        spinnerProfile = findViewById(R.id.spinnerProfile);
+        profiles = profileManager.loadProfiles();
+        refreshProfileSpinner();
+
+        spinnerProfile.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (suppressListeners) return;
+                String name = profileNames.get(position);
+                profileManager.setActiveProfileName(name);
+                loadActiveProfile();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        findViewById(R.id.btnProfileNew).setOnClickListener(v -> showNewProfileDialog());
+        findViewById(R.id.btnProfileRename).setOnClickListener(v -> showRenameProfileDialog());
+        findViewById(R.id.btnProfileDelete).setOnClickListener(v -> showDeleteProfileDialog());
+    }
+
+    private void refreshProfileSpinner() {
+        profileNames.clear();
+        for (ProfileManager.Profile p : profiles) {
+            profileNames.add(p.name);
+        }
+        profileAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, profileNames);
+        profileAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerProfile.setAdapter(profileAdapter);
+
+        // Select active profile
+        String activeName = profileManager.getActiveProfileName();
+        int idx = profileNames.indexOf(activeName);
+        if (idx >= 0) {
+            suppressListeners = true;
+            spinnerProfile.setSelection(idx);
+            suppressListeners = false;
+        }
+    }
+
+    private void loadActiveProfile() {
+        String activeName = profileManager.getActiveProfileName();
+        ProfileManager.Profile profile = profileManager.findProfile(profiles, activeName);
+
+        suppressListeners = true;
+        for (int i = 0; i < 3; i++) {
+            ButtonConfig bc = buttons[i];
+            int presetIndex = profile.presetIndices[i];
+            bc.presetSpinner.setSelection(presetIndex);
+
+            if (presetIndex == MappingPresets.CUSTOM_INDEX) {
+                setCustomControls(bc, profile.keycodes[i], profile.metaStates[i]);
+                setCustomControlsEnabled(bc, true);
+            } else {
+                int keycode = MappingPresets.PRESETS[presetIndex][0];
+                int meta = MappingPresets.PRESETS[presetIndex][1];
+                setCustomControls(bc, keycode, meta);
+                setCustomControlsEnabled(bc, false);
+            }
+        }
+        suppressListeners = false;
+
+        saveAndPushMappings();
+    }
+
+    private void showNewProfileDialog() {
+        EditText input = new EditText(this);
+        input.setHint("プロファイル名");
+        new AlertDialog.Builder(this)
+                .setTitle("新規プロファイル")
+                .setView(input)
+                .setPositiveButton("作成", (d, w) -> {
+                    String name = input.getText().toString().trim();
+                    if (name.isEmpty()) return;
+                    // Check for duplicate names
+                    for (ProfileManager.Profile p : profiles) {
+                        if (p.name.equals(name)) return;
+                    }
+                    // Copy current settings to new profile
+                    ProfileManager.Profile current = buildCurrentProfile();
+                    ProfileManager.Profile newProfile = current.copy(name);
+                    profiles.add(newProfile);
+                    profileManager.saveProfiles(profiles);
+                    profileManager.setActiveProfileName(name);
+                    refreshProfileSpinner();
+                })
+                .setNegativeButton("キャンセル", null)
+                .show();
+    }
+
+    private void showRenameProfileDialog() {
+        String activeName = profileManager.getActiveProfileName();
+        if ("Default".equals(activeName)) {
+            new AlertDialog.Builder(this)
+                    .setMessage("Defaultプロファイルは名前変更できません")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        EditText input = new EditText(this);
+        input.setText(activeName);
+        new AlertDialog.Builder(this)
+                .setTitle("名前変更")
+                .setView(input)
+                .setPositiveButton("変更", (d, w) -> {
+                    String newName = input.getText().toString().trim();
+                    if (newName.isEmpty() || newName.equals(activeName)) return;
+                    for (ProfileManager.Profile p : profiles) {
+                        if (p.name.equals(newName)) return;
+                    }
+                    ProfileManager.Profile profile = profileManager.findProfile(profiles, activeName);
+                    profile.name = newName;
+                    profileManager.saveProfiles(profiles);
+                    profileManager.setActiveProfileName(newName);
+                    refreshProfileSpinner();
+                    saveAndPushMappings(); // Update notification
+                })
+                .setNegativeButton("キャンセル", null)
+                .show();
+    }
+
+    private void showDeleteProfileDialog() {
+        String activeName = profileManager.getActiveProfileName();
+        if ("Default".equals(activeName)) {
+            new AlertDialog.Builder(this)
+                    .setMessage("Defaultプロファイルは削除できません")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("プロファイル削除")
+                .setMessage("\"" + activeName + "\" を削除しますか？")
+                .setPositiveButton("削除", (d, w) -> {
+                    profiles.removeIf(p -> p.name.equals(activeName));
+                    profileManager.saveProfiles(profiles);
+                    profileManager.setActiveProfileName(profiles.get(0).name);
+                    refreshProfileSpinner();
+                    loadActiveProfile();
+                })
+                .setNegativeButton("キャンセル", null)
+                .show();
+    }
+
+    private ProfileManager.Profile buildCurrentProfile() {
+        String activeName = profileManager.getActiveProfileName();
+        ProfileManager.Profile profile = new ProfileManager.Profile();
+        profile.name = activeName;
+        for (int i = 0; i < 3; i++) {
+            int[] mapping = computeMapping(i);
+            profile.presetIndices[i] = buttons[i].presetSpinner.getSelectedItemPosition();
+            profile.keycodes[i] = mapping[0];
+            profile.metaStates[i] = mapping[1];
+        }
+        return profile;
+    }
+
+    // --- Button setup ---
 
     private void setupButtons() {
         ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(
@@ -101,23 +274,6 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             bc.presetSpinner.setAdapter(presetAdapter);
             bc.keySpinner.setAdapter(keyAdapter);
 
-            // Restore saved state
-            int presetIndex = prefs.getInt("switch" + (i + 1) + "_preset", DEFAULT_PRESETS[i]);
-            bc.presetSpinner.setSelection(presetIndex);
-
-            if (presetIndex == MappingPresets.CUSTOM_INDEX) {
-                int keycode = prefs.getInt("switch" + (i + 1) + "_keycode", KeyEvent.KEYCODE_UNKNOWN);
-                int meta = prefs.getInt("switch" + (i + 1) + "_meta", 0);
-                setCustomControls(bc, keycode, meta);
-                setCustomControlsEnabled(bc, true);
-            } else {
-                int keycode = MappingPresets.PRESETS[presetIndex][0];
-                int meta = MappingPresets.PRESETS[presetIndex][1];
-                setCustomControls(bc, keycode, meta);
-                setCustomControlsEnabled(bc, false);
-            }
-
-            // Attach listeners
             final int btnIndex = i;
 
             bc.presetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -162,9 +318,6 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                 public void onNothingSelected(AdapterView<?> parent) {}
             });
         }
-
-        // Enable listeners after initial setup
-        buttons[0].presetSpinner.post(() -> suppressListeners = false);
     }
 
     private void setCustomControls(ButtonConfig bc, int keycode, int metaState) {
@@ -206,23 +359,29 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     }
 
     private void saveAndPushMappings() {
-        SharedPreferences.Editor editor = prefs.edit();
         int[][] mappings = new int[3][];
 
+        // Update current profile
+        ProfileManager.Profile current = buildCurrentProfile();
+        for (int i = 0; i < profiles.size(); i++) {
+            if (profiles.get(i).name.equals(current.name)) {
+                profiles.set(i, current);
+                break;
+            }
+        }
+        profileManager.saveProfiles(profiles);
+
         for (int i = 0; i < 3; i++) {
-            int presetIndex = buttons[i].presetSpinner.getSelectedItemPosition();
             mappings[i] = computeMapping(i);
-            editor.putInt("switch" + (i + 1) + "_preset", presetIndex);
-            editor.putInt("switch" + (i + 1) + "_keycode", mappings[i][0]);
-            editor.putInt("switch" + (i + 1) + "_meta", mappings[i][1]);
         }
 
-        // Build notification summary
-        String summary = "1:" + KeyDefinitions.describeMapping(mappings[0][0], mappings[0][1])
+        // Build notification summary with profile name
+        String activeName = profileManager.getActiveProfileName();
+        String summary = "[" + activeName + "] "
+                + "1:" + KeyDefinitions.describeMapping(mappings[0][0], mappings[0][1])
                 + " 2:" + KeyDefinitions.describeMapping(mappings[1][0], mappings[1][1])
                 + " 3:" + KeyDefinitions.describeMapping(mappings[2][0], mappings[2][1]);
-        editor.putString("notification_summary", summary);
-        editor.apply();
+        prefs.edit().putString("notification_summary", summary).apply();
 
         pushMappingsToService(mappings);
         updateNotification();

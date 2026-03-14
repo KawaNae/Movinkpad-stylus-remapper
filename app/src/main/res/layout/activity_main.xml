@@ -35,6 +35,54 @@
             android:enabled="false"
             android:layout_marginBottom="32dp" />
 
+        <!-- Profile section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="プロファイル"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <Spinner
+            android:id="@+id/spinnerProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal"
+            android:layout_marginBottom="24dp">
+
+            <Button
+                android:id="@+id/btnProfileNew"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="新規"
+                style="?android:attr/buttonBarButtonStyle"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnProfileRename"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="名前変更"
+                style="?android:attr/buttonBarButtonStyle"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnProfileDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="削除"
+                style="?android:attr/buttonBarButtonStyle"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Button settings section -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
