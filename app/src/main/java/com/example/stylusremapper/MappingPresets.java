@@ -18,6 +18,7 @@ public class MappingPresets {
         {KeyEvent.KEYCODE_E, 0},                                 // E
         {KeyEvent.KEYCODE_S,
          KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON},   // Ctrl+S
+        {KeyEvent.KEYCODE_UNKNOWN, 0},                           // Custom (placeholder)
     };
 
     public static final String[] LABELS = {
@@ -27,7 +28,10 @@ public class MappingPresets {
         "Ctrl+Shift+Z (やり直し)",
         "E (消しゴム切替)",
         "Ctrl+S (保存)",
+        "Custom (カスタム)",
     };
+
+    public static final int CUSTOM_INDEX = LABELS.length - 1;
 
     // Default preset IDs for each switch
     public static final int DEFAULT_SWITCH1 = 0; // Ctrl+Alt

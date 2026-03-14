@@ -8,10 +8,13 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.RemoteException;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -26,10 +29,28 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private TextView tvShizukuStatus;
     private TextView tvRemapperStatus;
     private Button btnToggle;
-    private Spinner spinnerSwitch1;
-    private Spinner spinnerSwitch2;
-    private Spinner spinnerSwitch3;
-    private boolean spinnersInitialized = false;
+
+    private boolean suppressListeners = true;
+
+    private static class ButtonConfig {
+        Spinner presetSpinner;
+        CheckBox cbCtrl, cbAlt, cbShift;
+        Spinner keySpinner;
+    }
+    private final ButtonConfig[] buttons = new ButtonConfig[3];
+
+    // View IDs for each button config
+    private static final int[][] VIEW_IDS = {
+        {R.id.spinnerPreset1, R.id.cbCtrl1, R.id.cbAlt1, R.id.cbShift1, R.id.spinnerKey1},
+        {R.id.spinnerPreset2, R.id.cbCtrl2, R.id.cbAlt2, R.id.cbShift2, R.id.spinnerKey2},
+        {R.id.spinnerPreset3, R.id.cbCtrl3, R.id.cbAlt3, R.id.cbShift3, R.id.spinnerKey3},
+    };
+
+    private static final int[] DEFAULT_PRESETS = {
+        MappingPresets.DEFAULT_SWITCH1,
+        MappingPresets.DEFAULT_SWITCH2,
+        MappingPresets.DEFAULT_SWITCH3,
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,9 +60,6 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         tvShizukuStatus = findViewById(R.id.tvShizukuStatus);
         tvRemapperStatus = findViewById(R.id.tvRemapperStatus);
         btnToggle = findViewById(R.id.btnToggle);
-        spinnerSwitch1 = findViewById(R.id.spinnerSwitch1);
-        spinnerSwitch2 = findViewById(R.id.spinnerSwitch2);
-        spinnerSwitch3 = findViewById(R.id.spinnerSwitch3);
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
@@ -53,7 +71,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
         }
 
-        setupSpinners();
+        setupButtons();
 
         shizukuHelper = new ShizukuHelper();
         shizukuHelper.setCallback(this);
@@ -62,68 +80,173 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         btnToggle.setOnClickListener(v -> toggleRemapper());
     }
 
-    private void setupSpinners() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+    private void setupButtons() {
+        ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, MappingPresets.LABELS);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        presetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        spinnerSwitch1.setAdapter(adapter);
-        spinnerSwitch2.setAdapter(adapter);
-        spinnerSwitch3.setAdapter(adapter);
+        ArrayAdapter<String> keyAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, KeyDefinitions.KEY_NAMES);
+        keyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        // Restore saved selections
-        spinnerSwitch1.setSelection(prefs.getInt("switch1_preset", MappingPresets.DEFAULT_SWITCH1));
-        spinnerSwitch2.setSelection(prefs.getInt("switch2_preset", MappingPresets.DEFAULT_SWITCH2));
-        spinnerSwitch3.setSelection(prefs.getInt("switch3_preset", MappingPresets.DEFAULT_SWITCH3));
+        for (int i = 0; i < 3; i++) {
+            ButtonConfig bc = new ButtonConfig();
+            bc.presetSpinner = findViewById(VIEW_IDS[i][0]);
+            bc.cbCtrl = findViewById(VIEW_IDS[i][1]);
+            bc.cbAlt = findViewById(VIEW_IDS[i][2]);
+            bc.cbShift = findViewById(VIEW_IDS[i][3]);
+            bc.keySpinner = findViewById(VIEW_IDS[i][4]);
+            buttons[i] = bc;
 
-        AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (spinnersInitialized) {
-                    saveAndPushMappings();
-                }
+            bc.presetSpinner.setAdapter(presetAdapter);
+            bc.keySpinner.setAdapter(keyAdapter);
+
+            // Restore saved state
+            int presetIndex = prefs.getInt("switch" + (i + 1) + "_preset", DEFAULT_PRESETS[i]);
+            bc.presetSpinner.setSelection(presetIndex);
+
+            if (presetIndex == MappingPresets.CUSTOM_INDEX) {
+                int keycode = prefs.getInt("switch" + (i + 1) + "_keycode", KeyEvent.KEYCODE_UNKNOWN);
+                int meta = prefs.getInt("switch" + (i + 1) + "_meta", 0);
+                setCustomControls(bc, keycode, meta);
+                setCustomControlsEnabled(bc, true);
+            } else {
+                int keycode = MappingPresets.PRESETS[presetIndex][0];
+                int meta = MappingPresets.PRESETS[presetIndex][1];
+                setCustomControls(bc, keycode, meta);
+                setCustomControlsEnabled(bc, false);
             }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        };
+            // Attach listeners
+            final int btnIndex = i;
 
-        spinnerSwitch1.setOnItemSelectedListener(listener);
-        spinnerSwitch2.setOnItemSelectedListener(listener);
-        spinnerSwitch3.setOnItemSelectedListener(listener);
+            bc.presetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (suppressListeners) return;
+                    suppressListeners = true;
+                    if (position == MappingPresets.CUSTOM_INDEX) {
+                        setCustomControlsEnabled(buttons[btnIndex], true);
+                    } else {
+                        int keycode = MappingPresets.PRESETS[position][0];
+                        int meta = MappingPresets.PRESETS[position][1];
+                        setCustomControls(buttons[btnIndex], keycode, meta);
+                        setCustomControlsEnabled(buttons[btnIndex], false);
+                    }
+                    suppressListeners = false;
+                    saveAndPushMappings();
+                }
 
-        // Mark initialized after the current message queue clears
-        // (Android fires onItemSelected asynchronously after setSelection)
-        spinnerSwitch1.post(() -> spinnersInitialized = true);
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+
+            CompoundButton.OnCheckedChangeListener checkListener = (buttonView, isChecked) -> {
+                if (suppressListeners) return;
+                switchToCustom(btnIndex);
+                saveAndPushMappings();
+            };
+            bc.cbCtrl.setOnCheckedChangeListener(checkListener);
+            bc.cbAlt.setOnCheckedChangeListener(checkListener);
+            bc.cbShift.setOnCheckedChangeListener(checkListener);
+
+            bc.keySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (suppressListeners) return;
+                    switchToCustom(btnIndex);
+                    saveAndPushMappings();
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
+
+        // Enable listeners after initial setup
+        buttons[0].presetSpinner.post(() -> suppressListeners = false);
+    }
+
+    private void setCustomControls(ButtonConfig bc, int keycode, int metaState) {
+        bc.cbCtrl.setChecked((metaState & KeyEvent.META_CTRL_ON) != 0);
+        bc.cbAlt.setChecked((metaState & KeyEvent.META_ALT_ON) != 0);
+        bc.cbShift.setChecked((metaState & KeyEvent.META_SHIFT_ON) != 0);
+        bc.keySpinner.setSelection(KeyDefinitions.indexOfKeycode(keycode));
+    }
+
+    private void setCustomControlsEnabled(ButtonConfig bc, boolean enabled) {
+        bc.cbCtrl.setEnabled(enabled);
+        bc.cbAlt.setEnabled(enabled);
+        bc.cbShift.setEnabled(enabled);
+        bc.keySpinner.setEnabled(enabled);
+    }
+
+    private void switchToCustom(int btnIndex) {
+        suppressListeners = true;
+        buttons[btnIndex].presetSpinner.setSelection(MappingPresets.CUSTOM_INDEX);
+        setCustomControlsEnabled(buttons[btnIndex], true);
+        suppressListeners = false;
+    }
+
+    private int[] computeMapping(int btnIndex) {
+        ButtonConfig bc = buttons[btnIndex];
+        int presetIndex = bc.presetSpinner.getSelectedItemPosition();
+
+        if (presetIndex != MappingPresets.CUSTOM_INDEX) {
+            return MappingPresets.PRESETS[presetIndex];
+        }
+
+        int meta = 0;
+        if (bc.cbCtrl.isChecked()) meta |= KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON;
+        if (bc.cbAlt.isChecked()) meta |= KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON;
+        if (bc.cbShift.isChecked()) meta |= KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON;
+
+        int keycode = KeyDefinitions.KEY_CODES[bc.keySpinner.getSelectedItemPosition()];
+        return new int[]{keycode, meta};
     }
 
     private void saveAndPushMappings() {
-        int p1 = spinnerSwitch1.getSelectedItemPosition();
-        int p2 = spinnerSwitch2.getSelectedItemPosition();
-        int p3 = spinnerSwitch3.getSelectedItemPosition();
+        SharedPreferences.Editor editor = prefs.edit();
+        int[][] mappings = new int[3][];
 
-        prefs.edit()
-                .putInt("switch1_preset", p1)
-                .putInt("switch2_preset", p2)
-                .putInt("switch3_preset", p3)
-                .apply();
+        for (int i = 0; i < 3; i++) {
+            int presetIndex = buttons[i].presetSpinner.getSelectedItemPosition();
+            mappings[i] = computeMapping(i);
+            editor.putInt("switch" + (i + 1) + "_preset", presetIndex);
+            editor.putInt("switch" + (i + 1) + "_keycode", mappings[i][0]);
+            editor.putInt("switch" + (i + 1) + "_meta", mappings[i][1]);
+        }
 
-        pushMappingsToService();
+        // Build notification summary
+        String summary = "1:" + KeyDefinitions.describeMapping(mappings[0][0], mappings[0][1])
+                + " 2:" + KeyDefinitions.describeMapping(mappings[1][0], mappings[1][1])
+                + " 3:" + KeyDefinitions.describeMapping(mappings[2][0], mappings[2][1]);
+        editor.putString("notification_summary", summary);
+        editor.apply();
+
+        pushMappingsToService(mappings);
+        updateNotification();
     }
 
-    private void pushMappingsToService() {
+    private void pushMappingsToService(int[][] mappings) {
         if (remapperService == null) return;
         try {
-            int p1 = spinnerSwitch1.getSelectedItemPosition();
-            int p2 = spinnerSwitch2.getSelectedItemPosition();
-            int p3 = spinnerSwitch3.getSelectedItemPosition();
-
             remapperService.updateMappings(
-                    MappingPresets.PRESETS[p1][0], MappingPresets.PRESETS[p1][1],
-                    MappingPresets.PRESETS[p2][0], MappingPresets.PRESETS[p2][1],
-                    MappingPresets.PRESETS[p3][0], MappingPresets.PRESETS[p3][1]);
+                    mappings[0][0], mappings[0][1],
+                    mappings[1][0], mappings[1][1],
+                    mappings[2][0], mappings[2][1]);
         } catch (RemoteException e) {
-            // Service may have died; will re-push on reconnect
+            // Service may have died
+        }
+    }
+
+    private void updateNotification() {
+        try {
+            if (remapperService != null && remapperService.isRunning()) {
+                startForegroundService(new Intent(this, RemapperForegroundService.class));
+            }
+        } catch (RemoteException e) {
+            // ignore
         }
     }
 
@@ -140,7 +263,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                 remapperService.stop();
                 stopService(new Intent(this, RemapperForegroundService.class));
             } else {
-                pushMappingsToService();
+                int[][] mappings = new int[3][];
+                for (int i = 0; i < 3; i++) mappings[i] = computeMapping(i);
+                pushMappingsToService(mappings);
                 remapperService.start();
                 startForegroundService(new Intent(this, RemapperForegroundService.class));
             }
@@ -174,7 +299,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         remapperService = service;
         runOnUiThread(() -> {
             tvShizukuStatus.setText("Shizuku: Connected");
-            pushMappingsToService();
+            int[][] mappings = new int[3][];
+            for (int i = 0; i < 3; i++) mappings[i] = computeMapping(i);
+            pushMappingsToService(mappings);
             updateUI();
         });
     }
