@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 
 public class RemapperForegroundService extends Service {
@@ -24,13 +25,16 @@ public class RemapperForegroundService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        SharedPreferences prefs = getSharedPreferences("mappings", MODE_PRIVATE);
+        String summary = prefs.getString("notification_summary", "Remapping active");
+
         PendingIntent pi = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE);
 
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Stylus Remapper")
-                .setContentText("Remapping active")
+                .setContentText(summary)
                 .setSmallIcon(android.R.drawable.ic_menu_edit)
                 .setContentIntent(pi)
                 .setOngoing(true)

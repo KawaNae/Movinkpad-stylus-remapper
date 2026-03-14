@@ -16,6 +16,7 @@ import java.lang.reflect.Method;
 public class RemapperUserService extends IRemapperService.Stub {
 
     // --- Linux input event constants ---
+    private static final int EV_SYN = 0x00;
     private static final int EV_KEY = 0x01;
 
     // Measured event codes on MovinkPad Pro 14:
@@ -29,16 +30,13 @@ public class RemapperUserService extends IRemapperService.Stub {
     // input_event struct size on 64-bit Android: 24 bytes
     private static final int INPUT_EVENT_SIZE = 24;
 
-    // Key mappings
-    private static final int SWITCH1_KEYCODE = KeyEvent.KEYCODE_UNKNOWN;
-    private static final int SWITCH1_META = KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON
-            | KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON;
-
-    private static final int SWITCH2_KEYCODE = KeyEvent.KEYCODE_SPACE;
-    private static final int SWITCH2_META = 0;
-
-    private static final int SWITCH3_KEYCODE = KeyEvent.KEYCODE_Z;
-    private static final int SWITCH3_META = KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON;
+    // Key mappings (volatile for thread safety: updated from binder thread, read from reader thread)
+    private volatile int sw1Keycode = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH1][0];
+    private volatile int sw1Meta    = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH1][1];
+    private volatile int sw2Keycode = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH2][0];
+    private volatile int sw2Meta    = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH2][1];
+    private volatile int sw3Keycode = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH3][0];
+    private volatile int sw3Meta    = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH3][1];
 
     private static final String DEVICE_PATH = "/dev/input/event6";
     private static final int INJECT_INPUT_EVENT_MODE_ASYNC = 0;
@@ -97,10 +95,32 @@ public class RemapperUserService extends IRemapperService.Stub {
         System.exit(0);
     }
 
+    @Override
+    public void updateMappings(int sw1Keycode, int sw1Meta,
+                               int sw2Keycode, int sw2Meta,
+                               int sw3Keycode, int sw3Meta) {
+        // Release any currently held key with the OLD mapping before switching
+        if (activeSwitch != 0) {
+            int[] prev = getMapping(activeSwitch);
+            injectKey(prev[0], prev[1], false);
+            activeSwitch = 0;
+            side1Down = false;
+            side2Down = false;
+        }
+
+        this.sw1Keycode = sw1Keycode;
+        this.sw1Meta = sw1Meta;
+        this.sw2Keycode = sw2Keycode;
+        this.sw2Meta = sw2Meta;
+        this.sw3Keycode = sw3Keycode;
+        this.sw3Meta = sw3Meta;
+    }
+
     private void eventLoop() {
         try (FileInputStream fis = new FileInputStream(DEVICE_PATH)) {
             currentFis = fis;
             byte[] buf = new byte[INPUT_EVENT_SIZE];
+            boolean needsUpdate = false;
             while (running && fis.read(buf) == INPUT_EVENT_SIZE) {
                 int type = (buf[16] & 0xFF) | ((buf[17] & 0xFF) << 8);
                 int code = (buf[18] & 0xFF) | ((buf[19] & 0xFF) << 8);
@@ -108,7 +128,16 @@ public class RemapperUserService extends IRemapperService.Stub {
                         | ((buf[22] & 0xFF) << 16) | ((buf[23] & 0xFF) << 24);
 
                 if (type == EV_KEY) {
-                    handleKeyEvent(code, value);
+                    if (code == BTN_SIDE1) {
+                        side1Down = (value == 1);
+                        needsUpdate = true;
+                    } else if (code == BTN_SIDE2) {
+                        side2Down = (value == 1);
+                        needsUpdate = true;
+                    }
+                } else if (type == EV_SYN && needsUpdate) {
+                    needsUpdate = false;
+                    applySwitch();
                 }
             }
         } catch (IOException e) {
@@ -134,13 +163,7 @@ public class RemapperUserService extends IRemapperService.Stub {
                 "injectInputEvent", InputEvent.class, int.class);
     }
 
-    private void handleKeyEvent(int code, int value) {
-        boolean isDown = (value == 1);
-
-        if (code == BTN_SIDE1) side1Down = isDown;
-        else if (code == BTN_SIDE2) side2Down = isDown;
-        else return;
-
+    private void applySwitch() {
         int newSwitch;
         if (side1Down && side2Down) {
             newSwitch = 3;
@@ -153,6 +176,17 @@ public class RemapperUserService extends IRemapperService.Stub {
         }
 
         if (newSwitch == activeSwitch) return;
+
+        // Button 3 release protection: when releasing from button 3,
+        // go directly to switch=0 to avoid intermediate switch=1 or switch=2
+        if (activeSwitch == 3 && newSwitch != 0) {
+            int[] prev = getMapping(activeSwitch);
+            injectKey(prev[0], prev[1], false);
+            activeSwitch = 0;
+            side1Down = false;
+            side2Down = false;
+            return;
+        }
 
         if (activeSwitch != 0) {
             int[] prev = getMapping(activeSwitch);
@@ -168,9 +202,9 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     private int[] getMapping(int switchNum) {
-        if (switchNum == 1) return new int[]{SWITCH1_KEYCODE, SWITCH1_META};
-        if (switchNum == 2) return new int[]{SWITCH2_KEYCODE, SWITCH2_META};
-        if (switchNum == 3) return new int[]{SWITCH3_KEYCODE, SWITCH3_META};
+        if (switchNum == 1) return new int[]{sw1Keycode, sw1Meta};
+        if (switchNum == 2) return new int[]{sw2Keycode, sw2Meta};
+        if (switchNum == 3) return new int[]{sw3Keycode, sw3Meta};
         return new int[]{0, 0};
     }
 
@@ -180,15 +214,31 @@ public class RemapperUserService extends IRemapperService.Stub {
             int action = down ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP;
 
             if (keyCode == KeyEvent.KEYCODE_UNKNOWN && metaState != 0) {
+                // Modifier-only (e.g. Ctrl+Alt for brush size)
                 injectModifierKeys(metaState, down, now);
                 return;
             }
 
-            KeyEvent event = new KeyEvent(
-                    now, now, action, keyCode, 0, metaState,
-                    -1, 0, KeyEvent.FLAG_FROM_SYSTEM, 0x101);
-
-            injectMethod.invoke(inputManager, event, INJECT_INPUT_EVENT_MODE_ASYNC);
+            if (metaState != 0) {
+                // Modifier + key (e.g. Ctrl+Z, Ctrl+S)
+                // Must send explicit modifier DOWN/UP events to avoid stuck keys
+                if (down) {
+                    injectModifierKeys(metaState, true, now);
+                }
+                KeyEvent event = new KeyEvent(
+                        now, now, action, keyCode, 0, metaState,
+                        -1, 0, KeyEvent.FLAG_FROM_SYSTEM, 0x101);
+                injectMethod.invoke(inputManager, event, INJECT_INPUT_EVENT_MODE_ASYNC);
+                if (!down) {
+                    injectModifierKeys(metaState, false, now);
+                }
+            } else {
+                // No modifiers (e.g. Space, E)
+                KeyEvent event = new KeyEvent(
+                        now, now, action, keyCode, 0, 0,
+                        -1, 0, KeyEvent.FLAG_FROM_SYSTEM, 0x101);
+                injectMethod.invoke(inputManager, event, INJECT_INPUT_EVENT_MODE_ASYNC);
+            }
         } catch (Exception e) {
             System.err.println("Failed to inject key event: " + e);
         }
