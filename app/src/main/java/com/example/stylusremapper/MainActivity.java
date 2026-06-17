@@ -481,8 +481,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private void pushRotationToService() {
         if (remapperService == null) return;
         try {
-            int rot = getWindowManager().getDefaultDisplay().getRotation();
-            remapperService.setRotation(rot);
+            android.view.Display display = getWindowManager().getDefaultDisplay();
+            android.graphics.Point size = new android.graphics.Point();
+            display.getRealSize(size);
+            remapperService.setRotation(display.getRotation(), size.x, size.y);
         } catch (RemoteException e) {
             // service may have died
         }

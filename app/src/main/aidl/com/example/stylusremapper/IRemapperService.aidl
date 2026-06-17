@@ -10,6 +10,7 @@ interface IRemapperService {
     boolean isRunning();
     void destroy();
     void updateMappings(in ButtonAction[] actions);
-    // Surface.ROTATION_* (0/1/2/3). Pushed by the UI process which has Display access.
-    void setRotation(int rotation);
+    // Display info pushed by the UI process. rotation = Surface.ROTATION_* (0/1/2/3),
+    // displayWidth/Height = current display dimensions in pixels (rotation-aware).
+    void setRotation(int rotation, int displayWidth, int displayHeight);
 }

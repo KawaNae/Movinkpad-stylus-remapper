@@ -43,12 +43,10 @@ public class RemapperUserService extends IRemapperService.Stub {
     private static final int BTN_SIDE1 = 0x14b;
     private static final int BTN_SIDE2 = 0x14c;
 
-    // --- MovinkPad-specific geometry ---
-    private static final int PEN_RAW_MAX_X = 18864;
-    private static final int PEN_RAW_MAX_Y = 30182;
-    private static final int PANEL_W = 1800;
-    private static final int PANEL_H = 2880;
+    // --- Display / digitizer geometry (queried dynamically) ---
     private volatile int rotationDeg = 270;
+    private volatile int displayW = 2880;   // overwritten by setRotation() push
+    private volatile int displayH = 1800;
 
     private static final int INPUT_EVENT_SIZE = 24;
     private static final String DEVICE_PATH = "/dev/input/event6";
@@ -64,8 +62,8 @@ public class RemapperUserService extends IRemapperService.Stub {
     private volatile ButtonAction action3 = MappingPresets.PRESETS[MappingPresets.DEFAULT_SWITCH3];
 
     // Pen raw state (reader thread owned; penRawX/Y are volatile for cross-thread logging)
-    private volatile int penRawX = PEN_RAW_MAX_X / 2;
-    private volatile int penRawY = PEN_RAW_MAX_Y / 2;
+    private volatile int penRawX = 0;
+    private volatile int penRawY = 0;
     private boolean penInRange = false;
     private boolean penTouching = false;
     private int penRawPressure = 0;
@@ -84,7 +82,9 @@ public class RemapperUserService extends IRemapperService.Stub {
     private boolean sessionIsPointer = false;
     private int sessionButtonState = 0;
 
-    // Axis range (queried once at startup via EVIOCGABS)
+    // Axis ranges (queried once at startup via EVIOCGABS)
+    private int absMaxX = 18864;
+    private int absMaxY = 30182;
     private int pressureMax = 8191;
 
     // Service plumbing
@@ -155,7 +155,7 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     @Override
-    public void setRotation(int rotation) {
+    public void setRotation(int rotation, int displayWidth, int displayHeight) {
         int deg;
         switch (rotation) {
             case 0: deg = 0; break;
@@ -164,9 +164,12 @@ public class RemapperUserService extends IRemapperService.Stub {
             case 3: deg = 270; break;
             default: return;
         }
-        if (deg != rotationDeg) {
-            Log.i(TAG, "setRotation " + rotationDeg + " -> " + deg);
+        if (deg != rotationDeg || displayW != displayWidth || displayH != displayHeight) {
+            Log.i(TAG, "setRotation " + rotationDeg + " -> " + deg
+                    + " display=" + displayWidth + "x" + displayHeight);
             rotationDeg = deg;
+            displayW = displayWidth;
+            displayH = displayHeight;
         }
     }
 
@@ -207,9 +210,26 @@ public class RemapperUserService extends IRemapperService.Stub {
             eventFd = extractFd(fis);
             queryAxisRanges(eventFd);
 
+            // Wait for pen to leave range before grabbing. If we grab while
+            // BTN_TOOL_PEN=1, InputReader retains stale pen-in-range state and
+            // palm rejection permanently blocks finger touch.
+            if (PenGrab.isLoaded() && PenGrab.nativeIsKeyPressed(eventFd, BTN_TOOL_PEN)) {
+                Log.i(TAG, "pen in range at startup, waiting for it to leave...");
+                long deadline = SystemClock.uptimeMillis() + 5000;
+                while (running && SystemClock.uptimeMillis() < deadline
+                        && PenGrab.nativeIsKeyPressed(eventFd, BTN_TOOL_PEN)) {
+                    sleepQuiet(50);
+                }
+                if (PenGrab.nativeIsKeyPressed(eventFd, BTN_TOOL_PEN)) {
+                    Log.w(TAG, "pen still in range after timeout, grabbing anyway (finger touch may be blocked)");
+                } else {
+                    Log.i(TAG, "pen left range, proceeding with grab");
+                }
+            }
+
             boolean grabbed = grabPen(true);
             if (!grabbed) {
-                Log.w(TAG, "EVIOCGRAB failed, retrying after 500ms (old process may still hold grab)");
+                Log.w(TAG, "EVIOCGRAB failed, retrying after 500ms");
                 sleepQuiet(500);
                 grabbed = grabPen(true);
             }
@@ -617,24 +637,26 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     private float[] currentPenLogical() {
-        float rx = (penRawX / (float) PEN_RAW_MAX_X) * PANEL_W;
-        float ry = (penRawY / (float) PEN_RAW_MAX_Y) * PANEL_H;
+        float nx = penRawX / (float) absMaxX;
+        float ny = penRawY / (float) absMaxY;
+        int dw = displayW;
+        int dh = displayH;
         switch (rotationDeg) {
             case 270:
-                logicalXY[0] = PANEL_H - ry;
-                logicalXY[1] = rx;
+                logicalXY[0] = dw * (1f - ny);
+                logicalXY[1] = dh * nx;
                 break;
             case 90:
-                logicalXY[0] = ry;
-                logicalXY[1] = PANEL_W - rx;
+                logicalXY[0] = dw * ny;
+                logicalXY[1] = dh * (1f - nx);
                 break;
             case 180:
-                logicalXY[0] = PANEL_W - rx;
-                logicalXY[1] = PANEL_H - ry;
+                logicalXY[0] = dw * (1f - nx);
+                logicalXY[1] = dh * (1f - ny);
                 break;
-            default:
-                logicalXY[0] = rx;
-                logicalXY[1] = ry;
+            default: // 0
+                logicalXY[0] = dw * nx;
+                logicalXY[1] = dh * ny;
                 break;
         }
         return logicalXY;
@@ -647,11 +669,20 @@ public class RemapperUserService extends IRemapperService.Stub {
 
     private void queryAxisRanges(int fd) {
         if (!PenGrab.isLoaded()) return;
-        int[] info = PenGrab.nativeGetAbsInfo(fd, ABS_PRESSURE);
-        if (info != null && info[1] > 0) {
-            pressureMax = info[1];
-            Log.i(TAG, "ABS_PRESSURE range: 0.." + pressureMax);
+        int[] infoX = PenGrab.nativeGetAbsInfo(fd, ABS_X);
+        if (infoX != null && infoX[1] > 0) {
+            absMaxX = infoX[1];
         }
+        int[] infoY = PenGrab.nativeGetAbsInfo(fd, ABS_Y);
+        if (infoY != null && infoY[1] > 0) {
+            absMaxY = infoY[1];
+        }
+        int[] infoP = PenGrab.nativeGetAbsInfo(fd, ABS_PRESSURE);
+        if (infoP != null && infoP[1] > 0) {
+            pressureMax = infoP[1];
+        }
+        Log.i(TAG, "ABS ranges: X=0.." + absMaxX + " Y=0.." + absMaxY
+                + " P=0.." + pressureMax);
     }
 
     private boolean grabPen(boolean on) {

@@ -57,6 +57,11 @@ public final class PenGrab {
     public static native int nativePoll(int fd, int timeoutMs);
 
     /**
+     * EVIOCGKEY check. Returns true if the given key code is currently pressed.
+     */
+    public static native boolean nativeIsKeyPressed(int fd, int keyCode);
+
+    /**
      * EVIOCGABS(axis). Returns [minimum, maximum, resolution] or null on error.
      */
     public static native int[] nativeGetAbsInfo(int fd, int axis);

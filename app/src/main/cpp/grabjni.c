@@ -14,6 +14,13 @@ Java_com_example_stylusremapper_PenGrab_nativePoll(JNIEnv* env, jclass clazz, ji
     return (jint) poll(&pfd, 1, (int) timeoutMs);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_example_stylusremapper_PenGrab_nativeIsKeyPressed(JNIEnv* env, jclass clazz, jint fd, jint keyCode) {
+    unsigned char key_states[(KEY_MAX + 7) / 8 + 1];
+    if (ioctl((int) fd, EVIOCGKEY(sizeof(key_states)), key_states) < 0) return JNI_FALSE;
+    return (key_states[keyCode / 8] & (1 << (keyCode % 8))) ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT jintArray JNICALL
 Java_com_example_stylusremapper_PenGrab_nativeGetAbsInfo(JNIEnv* env, jclass clazz, jint fd, jint axis) {
     struct input_absinfo info;

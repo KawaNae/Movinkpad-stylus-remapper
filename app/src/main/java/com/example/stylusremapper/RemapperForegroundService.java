@@ -74,7 +74,9 @@ public class RemapperForegroundService extends Service {
         Display d = displayManager.getDisplay(Display.DEFAULT_DISPLAY);
         if (d == null) return;
         try {
-            service.setRotation(d.getRotation());
+            android.graphics.Point size = new android.graphics.Point();
+            d.getRealSize(size);
+            service.setRotation(d.getRotation(), size.x, size.y);
         } catch (RemoteException ignored) {
         }
     }
