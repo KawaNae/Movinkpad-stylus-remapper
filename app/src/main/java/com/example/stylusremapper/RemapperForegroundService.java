@@ -7,12 +7,18 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.display.DisplayManager;
 import android.os.IBinder;
+import android.os.RemoteException;
+import android.view.Display;
 
 public class RemapperForegroundService extends Service {
 
     private static final String CHANNEL_ID = "stylus_remapper";
     private static final int NOTIFICATION_ID = 1;
+
+    private DisplayManager displayManager;
+    private DisplayManager.DisplayListener displayListener;
 
     @Override
     public void onCreate() {
@@ -21,6 +27,23 @@ public class RemapperForegroundService extends Service {
                 CHANNEL_ID, "Stylus Remapper", NotificationManager.IMPORTANCE_LOW);
         channel.setDescription("Stylus button remapping is active");
         getSystemService(NotificationManager.class).createNotificationChannel(channel);
+
+        displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+        displayListener = new DisplayManager.DisplayListener() {
+            @Override
+            public void onDisplayChanged(int displayId) {
+                if (displayId == Display.DEFAULT_DISPLAY) {
+                    pushRotation();
+                }
+            }
+
+            @Override
+            public void onDisplayAdded(int displayId) {}
+
+            @Override
+            public void onDisplayRemoved(int displayId) {}
+        };
+        displayManager.registerDisplayListener(displayListener, null);
     }
 
     @Override
@@ -41,7 +64,25 @@ public class RemapperForegroundService extends Service {
                 .build();
 
         startForeground(NOTIFICATION_ID, notification);
+        pushRotation();
         return START_STICKY;
+    }
+
+    private void pushRotation() {
+        IRemapperService service = ShizukuHelper.getService();
+        if (service == null) return;
+        Display d = displayManager.getDisplay(Display.DEFAULT_DISPLAY);
+        if (d == null) return;
+        try {
+            service.setRotation(d.getRotation());
+        } catch (RemoteException ignored) {
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        displayManager.unregisterDisplayListener(displayListener);
+        super.onDestroy();
     }
 
     @Override

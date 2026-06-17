@@ -1,6 +1,7 @@
 package com.example.stylusremapper;
 
 import android.content.SharedPreferences;
+import android.view.KeyEvent;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -28,21 +29,20 @@ public class ProfileManager {
 
         Profile def = new Profile();
         def.name = DEFAULT_PROFILE_NAME;
+        int[] defaultPresets = {
+                MappingPresets.DEFAULT_SWITCH1,
+                MappingPresets.DEFAULT_SWITCH2,
+                MappingPresets.DEFAULT_SWITCH3
+        };
         for (int i = 0; i < 3; i++) {
             int sw = i + 1;
-            int defaultPreset = i < 3 ? new int[]{
-                    MappingPresets.DEFAULT_SWITCH1,
-                    MappingPresets.DEFAULT_SWITCH2,
-                    MappingPresets.DEFAULT_SWITCH3
-            }[i] : 0;
-
-            def.presetIndices[i] = prefs.getInt("switch" + sw + "_preset", defaultPreset);
+            def.presetIndices[i] = prefs.getInt("switch" + sw + "_preset", defaultPresets[i]);
             if (def.presetIndices[i] == MappingPresets.CUSTOM_INDEX) {
-                def.keycodes[i] = prefs.getInt("switch" + sw + "_keycode", 0);
-                def.metaStates[i] = prefs.getInt("switch" + sw + "_meta", 0);
+                int keycode = prefs.getInt("switch" + sw + "_keycode", KeyEvent.KEYCODE_UNKNOWN);
+                int meta = prefs.getInt("switch" + sw + "_meta", 0);
+                def.actions[i] = new ButtonAction(meta, keycode, 0);
             } else {
-                def.keycodes[i] = MappingPresets.PRESETS[def.presetIndices[i]][0];
-                def.metaStates[i] = MappingPresets.PRESETS[def.presetIndices[i]][1];
+                def.actions[i] = MappingPresets.PRESETS[def.presetIndices[i]];
             }
         }
 
@@ -104,14 +104,12 @@ public class ProfileManager {
                 MappingPresets.DEFAULT_SWITCH2,
                 MappingPresets.DEFAULT_SWITCH3
         };
-        public int[] keycodes = new int[3];
-        public int[] metaStates = new int[3];
+        public ButtonAction[] actions = new ButtonAction[3];
 
         public Profile() {
-            // Initialize keycodes/metaStates from default presets
+            // Initialize actions from default presets
             for (int i = 0; i < 3; i++) {
-                keycodes[i] = MappingPresets.PRESETS[presetIndices[i]][0];
-                metaStates[i] = MappingPresets.PRESETS[presetIndices[i]][1];
+                actions[i] = MappingPresets.PRESETS[presetIndices[i]];
             }
         }
 
@@ -122,8 +120,9 @@ public class ProfileManager {
                 for (int i = 0; i < 3; i++) {
                     int sw = i + 1;
                     obj.put("sw" + sw + "_preset", presetIndices[i]);
-                    obj.put("sw" + sw + "_keycode", keycodes[i]);
-                    obj.put("sw" + sw + "_meta", metaStates[i]);
+                    obj.put("sw" + sw + "_keycode", actions[i].keycode);
+                    obj.put("sw" + sw + "_meta", actions[i].meta);
+                    obj.put("sw" + sw + "_mouse", actions[i].mouseButtons);
                 }
             } catch (JSONException ignored) {}
             return obj;
@@ -135,8 +134,11 @@ public class ProfileManager {
             for (int i = 0; i < 3; i++) {
                 int sw = i + 1;
                 p.presetIndices[i] = obj.optInt("sw" + sw + "_preset", 0);
-                p.keycodes[i] = obj.optInt("sw" + sw + "_keycode", 0);
-                p.metaStates[i] = obj.optInt("sw" + sw + "_meta", 0);
+                int keycode = obj.optInt("sw" + sw + "_keycode", KeyEvent.KEYCODE_UNKNOWN);
+                int meta = obj.optInt("sw" + sw + "_meta", 0);
+                // mouse defaults to 0 -> backward compatible with profiles saved before mouse support
+                int mouse = obj.optInt("sw" + sw + "_mouse", 0);
+                p.actions[i] = new ButtonAction(meta, keycode, mouse);
             }
             return p;
         }
@@ -146,8 +148,7 @@ public class ProfileManager {
             Profile c = new Profile();
             c.name = newName;
             System.arraycopy(presetIndices, 0, c.presetIndices, 0, 3);
-            System.arraycopy(keycodes, 0, c.keycodes, 0, 3);
-            System.arraycopy(metaStates, 0, c.metaStates, 0, 3);
+            System.arraycopy(actions, 0, c.actions, 0, 3);
             return c;
         }
     }

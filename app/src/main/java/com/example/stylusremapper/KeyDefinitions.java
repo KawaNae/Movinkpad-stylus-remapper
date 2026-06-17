@@ -73,22 +73,44 @@ public class KeyDefinitions {
         return 0;
     }
 
-    /** Build a short description like "Ctrl+Alt", "Ctrl+Z", "Space". */
-    public static String describeMapping(int keycode, int metaState) {
+    /** Display names for mouse buttons. */
+    public static String mouseButtonsName(int mouseButtons) {
         StringBuilder sb = new StringBuilder();
-        if ((metaState & KeyEvent.META_CTRL_ON) != 0) sb.append("Ctrl+");
-        if ((metaState & KeyEvent.META_ALT_ON) != 0) sb.append("Alt+");
-        if ((metaState & KeyEvent.META_SHIFT_ON) != 0) sb.append("Shift+");
+        if ((mouseButtons & ButtonAction.MOUSE_LEFT) != 0) sb.append("左クリック");
+        if ((mouseButtons & ButtonAction.MOUSE_MIDDLE) != 0) {
+            if (sb.length() > 0) sb.append("+");
+            sb.append("中クリック");
+        }
+        if ((mouseButtons & ButtonAction.MOUSE_RIGHT) != 0) {
+            if (sb.length() > 0) sb.append("+");
+            sb.append("右クリック");
+        }
+        return sb.toString();
+    }
 
-        if (keycode == KeyEvent.KEYCODE_UNKNOWN) {
-            // Modifier-only: remove trailing '+'
+    /** Build a short description like "Ctrl+Alt", "Ctrl+Z", "Space", "左クリック", "Space+左クリック". */
+    public static String describe(ButtonAction action) {
+        StringBuilder sb = new StringBuilder();
+        if ((action.meta & KeyEvent.META_CTRL_ON) != 0) sb.append("Ctrl+");
+        if ((action.meta & KeyEvent.META_ALT_ON) != 0) sb.append("Alt+");
+        if ((action.meta & KeyEvent.META_SHIFT_ON) != 0) sb.append("Shift+");
+
+        StringBuilder primary = new StringBuilder();
+        if (action.hasKey()) primary.append(getKeyName(action.keycode));
+        if (action.hasMouse()) {
+            if (primary.length() > 0) primary.append("+");
+            primary.append(mouseButtonsName(action.mouseButtons));
+        }
+
+        if (primary.length() == 0) {
+            // Modifier-only: drop trailing '+'
             if (sb.length() > 0) {
                 sb.setLength(sb.length() - 1);
             } else {
                 sb.append("None");
             }
         } else {
-            sb.append(getKeyName(keycode));
+            sb.append(primary);
         }
         return sb.toString();
     }

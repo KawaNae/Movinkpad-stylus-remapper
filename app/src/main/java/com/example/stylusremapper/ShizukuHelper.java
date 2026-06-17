@@ -17,9 +17,14 @@ public class ShizukuHelper {
     }
 
     private static final int REQUEST_CODE = 1001;
+    private static volatile IRemapperService sService;
     private IRemapperService remapperService;
     private Callback callback;
     private boolean bound = false;
+
+    public static IRemapperService getService() {
+        return sService;
+    }
 
     private final Shizuku.UserServiceArgs userServiceArgs =
             new Shizuku.UserServiceArgs(
@@ -35,6 +40,7 @@ public class ShizukuHelper {
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
             remapperService = IRemapperService.Stub.asInterface(binder);
+            sService = remapperService;
             bound = true;
             if (callback != null) callback.onServiceConnected(remapperService);
         }
@@ -42,6 +48,7 @@ public class ShizukuHelper {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             remapperService = null;
+            sService = null;
             bound = false;
             if (callback != null) callback.onServiceDisconnected();
         }
@@ -57,6 +64,7 @@ public class ShizukuHelper {
 
     private final Shizuku.OnBinderDeadListener binderDeadListener = () -> {
         remapperService = null;
+        sService = null;
         bound = false;
         if (callback != null) callback.onShizukuNotAvailable();
     };

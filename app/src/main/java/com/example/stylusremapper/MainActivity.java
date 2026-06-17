@@ -49,6 +49,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         Spinner presetSpinner;
         CheckBox cbCtrl, cbAlt, cbShift;
         Spinner keySpinner;
+        // The mouse-button part of this button's action. The current UI has no widget for it,
+        // so it is tracked here and preserved across preset<->Custom transitions (the preset
+        // dropdown effectively degrades to "Custom" on reload, which must not drop the mouse part).
+        int mouseButtons;
     }
     private final ButtonConfig[] buttons = new ButtonConfig[3];
 
@@ -144,15 +148,12 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             int presetIndex = profile.presetIndices[i];
             bc.presetSpinner.setSelection(presetIndex);
 
-            if (presetIndex == MappingPresets.CUSTOM_INDEX) {
-                setCustomControls(bc, profile.keycodes[i], profile.metaStates[i]);
-                setCustomControlsEnabled(bc, true);
-            } else {
-                int keycode = MappingPresets.PRESETS[presetIndex][0];
-                int meta = MappingPresets.PRESETS[presetIndex][1];
-                setCustomControls(bc, keycode, meta);
-                setCustomControlsEnabled(bc, false);
-            }
+            ButtonAction a = (presetIndex == MappingPresets.CUSTOM_INDEX)
+                    ? profile.actions[i]
+                    : MappingPresets.PRESETS[presetIndex];
+            bc.mouseButtons = a.mouseButtons;
+            setCustomControls(bc, a.keycode, a.meta);
+            setCustomControlsEnabled(bc, presetIndex == MappingPresets.CUSTOM_INDEX);
         }
         suppressListeners = false;
 
@@ -243,10 +244,8 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         ProfileManager.Profile profile = new ProfileManager.Profile();
         profile.name = activeName;
         for (int i = 0; i < 3; i++) {
-            int[] mapping = computeMapping(i);
             profile.presetIndices[i] = buttons[i].presetSpinner.getSelectedItemPosition();
-            profile.keycodes[i] = mapping[0];
-            profile.metaStates[i] = mapping[1];
+            profile.actions[i] = computeMapping(i);
         }
         return profile;
     }
@@ -284,9 +283,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                     if (position == MappingPresets.CUSTOM_INDEX) {
                         setCustomControlsEnabled(buttons[btnIndex], true);
                     } else {
-                        int keycode = MappingPresets.PRESETS[position][0];
-                        int meta = MappingPresets.PRESETS[position][1];
-                        setCustomControls(buttons[btnIndex], keycode, meta);
+                        ButtonAction a = MappingPresets.PRESETS[position];
+                        buttons[btnIndex].mouseButtons = a.mouseButtons;
+                        setCustomControls(buttons[btnIndex], a.keycode, a.meta);
                         setCustomControlsEnabled(buttons[btnIndex], false);
                     }
                     suppressListeners = false;
@@ -341,7 +340,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         suppressListeners = false;
     }
 
-    private int[] computeMapping(int btnIndex) {
+    private ButtonAction computeMapping(int btnIndex) {
         ButtonConfig bc = buttons[btnIndex];
         int presetIndex = bc.presetSpinner.getSelectedItemPosition();
 
@@ -349,17 +348,19 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             return MappingPresets.PRESETS[presetIndex];
         }
 
+        // Custom mode edits the modifier + key parts via widgets; the mouse part has no widget
+        // yet, so it is carried in bc.mouseButtons (preserved across preset<->Custom transitions).
         int meta = 0;
         if (bc.cbCtrl.isChecked()) meta |= KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON;
         if (bc.cbAlt.isChecked()) meta |= KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON;
         if (bc.cbShift.isChecked()) meta |= KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON;
 
         int keycode = KeyDefinitions.KEY_CODES[bc.keySpinner.getSelectedItemPosition()];
-        return new int[]{keycode, meta};
+        return new ButtonAction(meta, keycode, bc.mouseButtons);
     }
 
     private void saveAndPushMappings() {
-        int[][] mappings = new int[3][];
+        ButtonAction[] mappings = new ButtonAction[3];
 
         // Update current profile
         ProfileManager.Profile current = buildCurrentProfile();
@@ -378,22 +379,19 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         // Build notification summary with profile name
         String activeName = profileManager.getActiveProfileName();
         String summary = "[" + activeName + "] "
-                + "1:" + KeyDefinitions.describeMapping(mappings[0][0], mappings[0][1])
-                + " 2:" + KeyDefinitions.describeMapping(mappings[1][0], mappings[1][1])
-                + " 3:" + KeyDefinitions.describeMapping(mappings[2][0], mappings[2][1]);
+                + "1:" + KeyDefinitions.describe(mappings[0])
+                + " 2:" + KeyDefinitions.describe(mappings[1])
+                + " 3:" + KeyDefinitions.describe(mappings[2]);
         prefs.edit().putString("notification_summary", summary).apply();
 
         pushMappingsToService(mappings);
         updateNotification();
     }
 
-    private void pushMappingsToService(int[][] mappings) {
+    private void pushMappingsToService(ButtonAction[] mappings) {
         if (remapperService == null) return;
         try {
-            remapperService.updateMappings(
-                    mappings[0][0], mappings[0][1],
-                    mappings[1][0], mappings[1][1],
-                    mappings[2][0], mappings[2][1]);
+            remapperService.updateMappings(mappings);
         } catch (RemoteException e) {
             // Service may have died
         }
@@ -422,7 +420,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                 remapperService.stop();
                 stopService(new Intent(this, RemapperForegroundService.class));
             } else {
-                int[][] mappings = new int[3][];
+                ButtonAction[] mappings = new ButtonAction[3];
                 for (int i = 0; i < 3; i++) mappings[i] = computeMapping(i);
                 pushMappingsToService(mappings);
                 remapperService.start();
@@ -458,11 +456,33 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         remapperService = service;
         runOnUiThread(() -> {
             tvShizukuStatus.setText("Shizuku: Connected");
-            int[][] mappings = new int[3][];
+            try {
+                // Give the service the path to load libpengrab.so (EVIOCGRAB helper).
+                remapperService.init(getApplicationInfo().nativeLibraryDir);
+            } catch (RemoteException e) {
+                // non-fatal: key actions still work without the native grab
+            }
+            ButtonAction[] mappings = new ButtonAction[3];
             for (int i = 0; i < 3; i++) mappings[i] = computeMapping(i);
             pushMappingsToService(mappings);
+            pushRotationToService();
             updateUI();
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    private void pushRotationToService() {
+        if (remapperService == null) return;
+        try {
+            int rot = getWindowManager().getDefaultDisplay().getRotation();
+            remapperService.setRotation(rot);
+        } catch (RemoteException e) {
+            // service may have died
+        }
     }
 
     @Override
