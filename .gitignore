@@ -1,15 +1,20 @@
-# Build outputs
-build/
-app/build/
+# Whitelist 形式: 既定で全てを無視し、追跡するものだけ明示的に許可する。
 
-# IDE
-.idea/
-*.iml
+# まず全てを無視
+/*
 
-# Gradle
-.gradle/
-local.properties
+# 追跡するファイル（ルート直下）
+!/.gitignore
+!/README.md
+!/build.gradle.kts
+!/settings.gradle.kts
+!/gradle.properties
+!/gradlew
+!/gradlew.bat
 
-# OS
-.DS_Store
-Thumbs.db
+# 追跡するディレクトリ（中身ごと許可）
+!/gradle/
+!/app/
+
+# 許可ディレクトリ内のビルド成果物は再度無視
+/app/build/
