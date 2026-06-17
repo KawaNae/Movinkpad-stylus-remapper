@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.stylusremapper"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "3.0.0"
+        versionCode = 9
+        versionName = "3.0.1"
 
         // Native EVIOCGRAB helper. Device is aarch64-only (Wacom MovinkPad).
         ndk {

@@ -101,9 +101,15 @@ public class ShizukuHelper {
     }
 
     public void bindService() {
-        if (!bound) {
-            Shizuku.bindUserService(userServiceArgs, serviceConnection);
-        }
+        // Kill any old service process before binding to prevent stale EVIOCGRAB.
+        // This handles the case where the app was updated and the old process survived.
+        try {
+            Shizuku.unbindUserService(userServiceArgs, serviceConnection, true);
+        } catch (Exception ignored) {}
+        bound = false;
+        remapperService = null;
+        sService = null;
+        Shizuku.bindUserService(userServiceArgs, serviceConnection);
     }
 
     public void unbindService() {

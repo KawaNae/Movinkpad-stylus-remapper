@@ -209,7 +209,12 @@ public class RemapperUserService extends IRemapperService.Stub {
 
             boolean grabbed = grabPen(true);
             if (!grabbed) {
-                Log.w(TAG, "EVIOCGRAB failed; proxy will run but duplicate events may occur");
+                Log.w(TAG, "EVIOCGRAB failed, retrying after 500ms (old process may still hold grab)");
+                sleepQuiet(500);
+                grabbed = grabPen(true);
+            }
+            if (!grabbed) {
+                Log.w(TAG, "EVIOCGRAB retry failed; proxy will run but duplicate events may occur");
             }
 
             byte[] buf = new byte[INPUT_EVENT_SIZE];

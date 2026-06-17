@@ -67,6 +67,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        TextView tvTitle = findViewById(R.id.tvTitle);
+        tvTitle.setText("Stylus Remapper v" + BuildConfig.VERSION_NAME);
+
         tvShizukuStatus = findViewById(R.id.tvShizukuStatus);
         tvRemapperStatus = findViewById(R.id.tvRemapperStatus);
         btnToggle = findViewById(R.id.btnToggle);
