@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Running (ON): lit green -->
     <item android:state_selected="true">
-        <shape android:shape="oval">
+        <shape android:shape="rectangle">
             <solid android:color="@color/green_dim"/>
-            <stroke android:width="2dp" android:color="@color/green"/>
+            <stroke android:width="1dp" android:color="#335CB870"/>
+            <corners android:radius="20dp"/>
         </shape>
     </item>
-    <!-- Stopped (OFF): dim / unlit -->
     <item>
-        <shape android:shape="oval">
+        <shape android:shape="rectangle">
             <solid android:color="@color/bg_raised"/>
-            <stroke android:width="2dp" android:color="@color/border_light"/>
+            <stroke android:width="1dp" android:color="@color/border_light"/>
+            <corners android:radius="20dp"/>
         </shape>
     </item>
 </selector>

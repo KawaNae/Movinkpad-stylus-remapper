@@ -34,8 +34,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private SharedPreferences prefs;
 
     private TextView tvShizukuStatus;
-    private ImageView tvRemapperStatus;
-    private View btnToggle;
+    private TextView btnToggle;
 
     private boolean suppressListeners = true;
 
@@ -51,6 +50,8 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     // Pen indicators
     private View[] penBtns;
+    private TextView[] penLabels;
+    private View[] penLines;
 
     // Card expand/collapse
     private int expandedCard = 0;
@@ -87,15 +88,14 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView tvTitle = findViewById(R.id.tvTitle);
-        tvTitle.setText("Stylus Remapper v" + BuildConfig.VERSION_NAME);
+        TextView tvVersion = findViewById(R.id.tvVersion);
+        tvVersion.setText("v" + BuildConfig.VERSION_NAME);
 
         tvShizukuStatus = findViewById(R.id.tvShizukuStatus);
         tvMappingSummary = findViewById(R.id.tvMappingSummary);
 
-        // Power button
+        // Start/stop toggle (shows the current run state and toggles on tap)
         btnToggle = findViewById(R.id.btnToggle);
-        tvRemapperStatus = findViewById(R.id.tvRemapperStatus);
         btnToggle.setOnClickListener(v -> toggleRemapper());
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
@@ -115,9 +115,20 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             findViewById(R.id.penBtn2),
             findViewById(R.id.penBtn3)
         };
+        penLabels = new TextView[]{
+            findViewById(R.id.tvPenLabel1),
+            findViewById(R.id.tvPenLabel2),
+            findViewById(R.id.tvPenLabel3)
+        };
+        penLines = new View[]{
+            findViewById(R.id.penLine1),
+            findViewById(R.id.penLine2),
+            findViewById(R.id.penLine3)
+        };
         for (int i = 0; i < 3; i++) {
             final int idx = i;
             penBtns[i].setOnClickListener(v -> expandCard(idx));
+            penLabels[i].setOnClickListener(v -> expandCard(idx));
         }
 
         setupProfileUI();
@@ -127,6 +138,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         // Expand the topmost card (Switch 3) by default — matches the physical
         // top-to-bottom order SW3 → SW2 → SW1.
         expandCard(2);
+
+        // Reflect the initial (not-yet-connected) state in the header badge.
+        updateUI();
 
         shizukuHelper = new ShizukuHelper();
         shizukuHelper.setCallback(this);
@@ -153,7 +167,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     private void updatePenIndicators(int activeCard) {
         for (int i = 0; i < 3; i++) {
-            penBtns[i].setSelected(i == activeCard);
+            boolean active = (i == activeCard);
+            penBtns[i].setSelected(active);
+            penLabels[i].setTextColor(getColor(active ? R.color.amber : R.color.text_secondary));
+            penLines[i].setBackgroundColor(getColor(active ? R.color.amber : R.color.border_light));
         }
     }
 
@@ -618,7 +635,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         for (int i = 0; i < 3; i++) {
             ButtonConfig bc = buttons[i];
             ButtonAction a = computeMapping(i);
-            bc.currentMappingLabel.setText(KeyDefinitions.describe(a));
+            String desc = KeyDefinitions.describe(a);
+            bc.currentMappingLabel.setText(desc);
+            penLabels[i].setText(desc);
         }
     }
 
@@ -662,7 +681,13 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
             updateUI();
         } catch (RemoteException e) {
-            tvRemapperStatus.setColorFilter(getColor(R.color.red));
+            setRunBadge("● エラー", R.color.red);
+        } catch (RuntimeException e) {
+            // start() may rethrow service-side failures (e.g. InputManager init) across
+            // the binder. Surface it instead of silently leaving the toggle stuck.
+            setRunBadge("● 起動失敗", R.color.red);
+            android.widget.Toast.makeText(this,
+                    "起動失敗: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
         }
     }
 
@@ -670,17 +695,24 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         if (remapperService == null) {
             btnToggle.setEnabled(false);
             btnToggle.setSelected(false);
-            tvRemapperStatus.setColorFilter(getColor(R.color.text_muted));
+            setRunBadge("● 未接続", R.color.text_muted);
             return;
         }
         try {
             boolean running = remapperService.isRunning();
-            btnToggle.setSelected(running);
             btnToggle.setEnabled(true);
-            tvRemapperStatus.setColorFilter(getColor(running ? R.color.red : R.color.green));
+            // ON = lit green, OFF = dim grey. (Previously inverted: ON showed red.)
+            btnToggle.setSelected(running);
+            setRunBadge(running ? "● 動作中" : "● 停止中",
+                    running ? R.color.green : R.color.text_secondary);
         } catch (RemoteException e) {
-            tvRemapperStatus.setColorFilter(getColor(R.color.red));
+            setRunBadge("● エラー", R.color.red);
         }
+    }
+
+    private void setRunBadge(String text, int colorRes) {
+        btnToggle.setText(text);
+        btnToggle.setTextColor(getColor(colorRes));
     }
 
     // --- ShizukuHelper.Callback ---
