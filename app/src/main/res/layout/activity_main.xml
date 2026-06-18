@@ -77,16 +77,55 @@
                     android:background="@drawable/bg_power_btn"
                     android:clickable="true"
                     android:focusable="true"/>
-                <TextView
+                <ImageView
                     android:id="@+id/tvRemapperStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="⏻"
-                    android:textSize="16sp"
-                    android:textColor="@color/green"/>
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_power"
+                    android:importantForAccessibility="no"/>
             </FrameLayout>
         </LinearLayout>
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/border"/>
+
+    <!-- ═══ Profile Bar ═══ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:background="@color/bg">
+
+        <Spinner
+            android:id="@+id/spinnerProfile"
+            android:layout_width="140dp"
+            android:layout_height="32dp"
+            android:background="@drawable/bg_profile_dropdown"
+            android:popupBackground="@color/bg_card"/>
+
+        <Button android:id="@+id/btnProfileNew" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="新規" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
+            android:paddingHorizontal="10dp" android:layout_marginStart="8dp" android:minWidth="0dp" android:minHeight="0dp"/>
+        <Button android:id="@+id/btnProfileRename" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="名前変更" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
+            android:paddingHorizontal="10dp" android:layout_marginStart="4dp" android:minWidth="0dp" android:minHeight="0dp"/>
+        <Button android:id="@+id/btnProfileDelete" android:layout_width="wrap_content" android:layout_height="28dp"
+            android:text="削除" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
+            android:paddingHorizontal="10dp" android:layout_marginStart="4dp" android:minWidth="0dp" android:minHeight="0dp"/>
+
+        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+
+        <TextView
+            android:id="@+id/tvMappingSummary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="@color/text_muted"
+            android:fontFamily="monospace"/>
     </LinearLayout>
 
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/border"/>
@@ -125,9 +164,9 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Card 1 -->
+                    <!-- Card 3 (Switch 3) — topmost on the pen -->
                     <LinearLayout
-                        android:id="@+id/card1"
+                        android:id="@+id/card3"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
@@ -137,7 +176,7 @@
                         android:focusable="true">
 
                         <LinearLayout
-                            android:id="@+id/cardHeader1"
+                            android:id="@+id/cardHeader3"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
@@ -145,11 +184,11 @@
                             android:padding="14dp">
 
                             <TextView
-                                android:id="@+id/cardNum1"
+                                android:id="@+id/cardNum3"
                                 android:layout_width="32dp"
                                 android:layout_height="32dp"
                                 android:gravity="center"
-                                android:text="1"
+                                android:text="3"
                                 android:textSize="13sp"
                                 android:textColor="@color/amber"
                                 android:fontFamily="monospace"
@@ -162,16 +201,16 @@
                                 android:orientation="vertical"
                                 android:layout_marginStart="12dp">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:text="Switch 1" android:textSize="14sp" android:textColor="@color/text_primary" android:fontFamily="sans-serif-medium"/>
+                                    android:text="Switch 3" android:textSize="14sp" android:textColor="@color/text_primary" android:fontFamily="sans-serif-medium"/>
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:text="ペン先側ボタン" android:textSize="12sp" android:textColor="@color/text_secondary"/>
+                                    android:text="同時押し" android:textSize="12sp" android:textColor="@color/text_secondary"/>
                             </LinearLayout>
 
                             <TextView
-                                android:id="@+id/tvCurrentMapping1"
+                                android:id="@+id/tvCurrentMapping3"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Ctrl+Alt"
+                                android:text="Ctrl+Z"
                                 android:textSize="13sp"
                                 android:textColor="@color/amber"
                                 android:fontFamily="monospace"
@@ -180,7 +219,7 @@
                                 android:paddingVertical="4dp"/>
 
                             <TextView
-                                android:id="@+id/chevron1"
+                                android:id="@+id/chevron3"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="▴"
@@ -190,10 +229,10 @@
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp"
-                            android:background="@color/border" android:id="@+id/cardDivider1"/>
+                            android:background="@color/border" android:id="@+id/cardDivider3"/>
 
                         <LinearLayout
-                            android:id="@+id/cardBody1"
+                            android:id="@+id/cardBody3"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
@@ -201,7 +240,7 @@
                             android:visibility="visible">
 
                             <LinearLayout
-                                android:id="@+id/presetGrid1"
+                                android:id="@+id/presetGrid3"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
@@ -224,17 +263,17 @@
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                         android:text="修飾キー" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
                                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
-                                        <CheckBox android:id="@+id/cbCtrl1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbCtrl3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="Ctrl" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp"
                                             android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbAlt1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbAlt3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="Alt" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp"
                                             android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbShift1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbShift3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="Shift" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center"
@@ -246,7 +285,7 @@
                                     android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="16dp">
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                         android:text="キー" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
-                                    <Spinner android:id="@+id/spinnerKey1" android:layout_width="match_parent" android:layout_height="36dp"
+                                    <Spinner android:id="@+id/spinnerKey3" android:layout_width="match_parent" android:layout_height="36dp"
                                         android:background="@drawable/bg_profile_dropdown" android:popupBackground="@color/bg_card"/>
                                 </LinearLayout>
 
@@ -255,15 +294,15 @@
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                                         android:text="マウスボタン" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
                                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
-                                        <CheckBox android:id="@+id/cbMouseL1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbMouseL3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="左" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbMouseM1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbMouseM3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="中" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbMouseR1" android:layout_width="wrap_content" android:layout_height="36dp"
+                                        <CheckBox android:id="@+id/cbMouseR3" android:layout_width="wrap_content" android:layout_height="36dp"
                                             android:text="右" android:textSize="12sp" android:textColor="@color/text_muted"
                                             android:button="@null" android:background="@drawable/bg_pill"
                                             android:paddingHorizontal="14dp" android:gravity="center" android:minWidth="0dp"/>
@@ -345,9 +384,9 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Card 3 -->
+                    <!-- Card 1 (Switch 1) — pen-tip side, lowest on the pen -->
                     <LinearLayout
-                        android:id="@+id/card3"
+                        android:id="@+id/card1"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
@@ -357,35 +396,35 @@
                         android:focusable="true">
 
                         <LinearLayout
-                            android:id="@+id/cardHeader3"
+                            android:id="@+id/cardHeader1"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
                             android:padding="14dp">
-                            <TextView android:id="@+id/cardNum3" android:layout_width="32dp" android:layout_height="32dp"
-                                android:gravity="center" android:text="3" android:textSize="13sp" android:textColor="@color/text_muted"
+                            <TextView android:id="@+id/cardNum1" android:layout_width="32dp" android:layout_height="32dp"
+                                android:gravity="center" android:text="1" android:textSize="13sp" android:textColor="@color/text_muted"
                                 android:fontFamily="monospace" android:background="@drawable/bg_number_badge"/>
                             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                                 android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:text="Switch 1+2" android:textSize="14sp" android:textColor="@color/text_primary" android:fontFamily="sans-serif-medium"/>
+                                    android:text="Switch 1" android:textSize="14sp" android:textColor="@color/text_primary" android:fontFamily="sans-serif-medium"/>
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                    android:text="同時押し" android:textSize="12sp" android:textColor="@color/text_secondary"/>
+                                    android:text="ペン先側ボタン" android:textSize="12sp" android:textColor="@color/text_secondary"/>
                             </LinearLayout>
-                            <TextView android:id="@+id/tvCurrentMapping3" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                android:text="Ctrl+Z" android:textSize="13sp" android:textColor="@color/amber" android:fontFamily="monospace"
+                            <TextView android:id="@+id/tvCurrentMapping1" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Ctrl+Alt" android:textSize="13sp" android:textColor="@color/amber" android:fontFamily="monospace"
                                 android:background="@drawable/bg_amber_pill" android:paddingHorizontal="10dp" android:paddingVertical="4dp"/>
-                            <TextView android:id="@+id/chevron3" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            <TextView android:id="@+id/chevron1" android:layout_width="wrap_content" android:layout_height="wrap_content"
                                 android:text="▾" android:textSize="16sp" android:textColor="@color/text_muted" android:layout_marginStart="10dp"/>
                         </LinearLayout>
 
                         <View android:layout_width="match_parent" android:layout_height="1dp"
-                            android:background="@color/border" android:id="@+id/cardDivider3" android:visibility="gone"/>
+                            android:background="@color/border" android:id="@+id/cardDivider1" android:visibility="gone"/>
 
-                        <LinearLayout android:id="@+id/cardBody3" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        <LinearLayout android:id="@+id/cardBody1" android:layout_width="match_parent" android:layout_height="wrap_content"
                             android:orientation="vertical" android:padding="16dp" android:visibility="gone">
-                            <LinearLayout android:id="@+id/presetGrid3" android:layout_width="match_parent" android:layout_height="wrap_content"
+                            <LinearLayout android:id="@+id/presetGrid1" android:layout_width="match_parent" android:layout_height="wrap_content"
                                 android:orientation="vertical" android:layout_marginBottom="16dp"/>
                             <View android:layout_width="match_parent" android:layout_height="1dp"
                                 android:background="@color/border" android:layout_marginBottom="14dp"/>
@@ -396,21 +435,21 @@
                                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="16dp">
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="修飾キー" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
                                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
-                                        <CheckBox android:id="@+id/cbCtrl3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Ctrl" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbAlt3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Alt" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbShift3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Shift" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbCtrl1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Ctrl" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbAlt1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Alt" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbShift1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="Shift" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:minWidth="0dp"/>
                                     </LinearLayout>
                                 </LinearLayout>
                                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="16dp">
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="キー" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
-                                    <Spinner android:id="@+id/spinnerKey3" android:layout_width="match_parent" android:layout_height="36dp" android:background="@drawable/bg_profile_dropdown" android:popupBackground="@color/bg_card"/>
+                                    <Spinner android:id="@+id/spinnerKey1" android:layout_width="match_parent" android:layout_height="36dp" android:background="@drawable/bg_profile_dropdown" android:popupBackground="@color/bg_card"/>
                                 </LinearLayout>
                                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="マウスボタン" android:textSize="11sp" android:textColor="@color/text_muted" android:layout_marginBottom="6dp"/>
                                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
-                                        <CheckBox android:id="@+id/cbMouseL3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="左" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbMouseM3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="中" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
-                                        <CheckBox android:id="@+id/cbMouseR3" android:layout_width="wrap_content" android:layout_height="36dp" android:text="右" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbMouseL1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="左" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbMouseM1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="中" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:layout_marginEnd="6dp" android:minWidth="0dp"/>
+                                        <CheckBox android:id="@+id/cbMouseR1" android:layout_width="wrap_content" android:layout_height="36dp" android:text="右" android:textSize="12sp" android:textColor="@color/text_muted" android:button="@null" android:background="@drawable/bg_pill" android:paddingHorizontal="14dp" android:gravity="center" android:minWidth="0dp"/>
                                     </LinearLayout>
                                 </LinearLayout>
                             </LinearLayout>
@@ -510,46 +549,6 @@
                     android:fontFamily="monospace"/>
             </FrameLayout>
         </FrameLayout>
-    </LinearLayout>
-
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/border"/>
-
-    <!-- ═══ Footer ═══ -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="24dp"
-        android:background="@color/bg">
-
-        <Spinner
-            android:id="@+id/spinnerProfile"
-            android:layout_width="140dp"
-            android:layout_height="32dp"
-            android:background="@drawable/bg_profile_dropdown"
-            android:popupBackground="@color/bg_card"/>
-
-        <Button android:id="@+id/btnProfileNew" android:layout_width="wrap_content" android:layout_height="28dp"
-            android:text="新規" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
-            android:paddingHorizontal="10dp" android:layout_marginStart="8dp" android:minWidth="0dp" android:minHeight="0dp"/>
-        <Button android:id="@+id/btnProfileRename" android:layout_width="wrap_content" android:layout_height="28dp"
-            android:text="名前変更" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
-            android:paddingHorizontal="10dp" android:layout_marginStart="4dp" android:minWidth="0dp" android:minHeight="0dp"/>
-        <Button android:id="@+id/btnProfileDelete" android:layout_width="wrap_content" android:layout_height="28dp"
-            android:text="削除" android:textSize="11sp" android:textColor="@color/text_muted" android:background="@drawable/bg_footer_btn"
-            android:paddingHorizontal="10dp" android:layout_marginStart="4dp" android:minWidth="0dp" android:minHeight="0dp"/>
-
-        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
-
-        <TextView
-            android:id="@+id/tvMappingSummary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="11sp"
-            android:textColor="@color/text_muted"
-            android:fontFamily="monospace"/>
     </LinearLayout>
 
 </LinearLayout>

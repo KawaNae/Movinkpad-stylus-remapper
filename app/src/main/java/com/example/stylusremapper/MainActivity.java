@@ -17,6 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -33,7 +34,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private SharedPreferences prefs;
 
     private TextView tvShizukuStatus;
-    private TextView tvRemapperStatus;
+    private ImageView tvRemapperStatus;
     private View btnToggle;
 
     private boolean suppressListeners = true;
@@ -123,8 +124,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         setupButtons();
         loadActiveProfile();
 
-        // Expand first card by default
-        expandCard(0);
+        // Expand the topmost card (Switch 3) by default — matches the physical
+        // top-to-bottom order SW3 → SW2 → SW1.
+        expandCard(2);
 
         shizukuHelper = new ShizukuHelper();
         shizukuHelper.setCallback(this);
@@ -660,7 +662,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
             updateUI();
         } catch (RemoteException e) {
-            tvRemapperStatus.setTextColor(getColor(R.color.red));
+            tvRemapperStatus.setColorFilter(getColor(R.color.red));
         }
     }
 
@@ -668,16 +670,16 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         if (remapperService == null) {
             btnToggle.setEnabled(false);
             btnToggle.setSelected(false);
-            tvRemapperStatus.setTextColor(getColor(R.color.text_muted));
+            tvRemapperStatus.setColorFilter(getColor(R.color.text_muted));
             return;
         }
         try {
             boolean running = remapperService.isRunning();
             btnToggle.setSelected(running);
             btnToggle.setEnabled(true);
-            tvRemapperStatus.setTextColor(getColor(running ? R.color.red : R.color.green));
+            tvRemapperStatus.setColorFilter(getColor(running ? R.color.red : R.color.green));
         } catch (RemoteException e) {
-            tvRemapperStatus.setTextColor(getColor(R.color.red));
+            tvRemapperStatus.setColorFilter(getColor(R.color.red));
         }
     }
 
