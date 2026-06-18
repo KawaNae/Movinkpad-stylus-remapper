@@ -1,5 +1,9 @@
 # Movinkpad Stylus Remapper
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Stylus Remapper screenshot" width="800">
+</p>
+
 Wacom MovinkPad Pro 14 の Pro Pen 3 サイドボタンをキーボードショートカットにリマップする Android アプリです。
 
 CLIP STUDIO PAINT など、スタイラスボタンのネイティブ対応が不十分なアプリでの利用を想定しています。
