@@ -8,6 +8,7 @@ import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -108,6 +109,10 @@ public class RemapperUserService extends IRemapperService.Stub {
         stylusPP.toolType = MotionEvent.TOOL_TYPE_STYLUS;
     }
 
+    public RemapperUserService() {
+        killZombies();
+    }
+
     // ========================== AIDL interface ==========================
 
     @Override
@@ -118,8 +123,14 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         if (running) return;
+        Thread old = readThread;
+        if (old != null && old.isAlive()) {
+            try { old.join(2000); } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
         try {
             initInputManager();
         } catch (Exception e) {
@@ -131,14 +142,18 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         running = false;
         FileInputStream fis = currentFis;
         if (fis != null) {
             try { fis.close(); } catch (IOException ignored) {}
         }
-        if (readThread != null) {
-            readThread.interrupt();
+        Thread t = readThread;
+        if (t != null) {
+            t.interrupt();
+            try { t.join(3000); } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
             readThread = null;
         }
     }
@@ -149,7 +164,7 @@ public class RemapperUserService extends IRemapperService.Stub {
     }
 
     @Override
-    public void destroy() {
+    public synchronized void destroy() {
         stop();
         System.exit(0);
     }
@@ -227,14 +242,16 @@ public class RemapperUserService extends IRemapperService.Stub {
                 }
             }
 
-            boolean grabbed = grabPen(true);
-            if (!grabbed) {
-                Log.w(TAG, "EVIOCGRAB failed, retrying after 500ms");
-                sleepQuiet(500);
+            boolean grabbed = false;
+            for (int attempt = 0; attempt < 5 && !grabbed && running; attempt++) {
                 grabbed = grabPen(true);
+                if (!grabbed) {
+                    Log.w(TAG, "EVIOCGRAB attempt " + (attempt + 1) + "/5 failed, retrying...");
+                    sleepQuiet(200);
+                }
             }
             if (!grabbed) {
-                Log.w(TAG, "EVIOCGRAB retry failed; proxy will run but duplicate events may occur");
+                Log.w(TAG, "EVIOCGRAB failed after 5 attempts; proxy will run but duplicate events may occur");
             }
 
             byte[] buf = new byte[INPUT_EVENT_SIZE];
@@ -709,6 +726,39 @@ public class RemapperUserService extends IRemapperService.Stub {
         } catch (Exception e) {
             Log.i(TAG, "extractFd failed: " + e);
             return -1;
+        }
+    }
+
+    private static void killZombies() {
+        int myPid = android.os.Process.myPid();
+        String target = BuildConfig.APPLICATION_ID + ":remapper";
+        File procDir = new File("/proc");
+        String[] entries = procDir.list();
+        if (entries == null) return;
+
+        for (String entry : entries) {
+            int pid;
+            try {
+                pid = Integer.parseInt(entry);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            if (pid == myPid) continue;
+
+            try (FileInputStream fis = new FileInputStream("/proc/" + pid + "/cmdline")) {
+                byte[] buf = new byte[256];
+                int n = fis.read(buf);
+                if (n <= 0) continue;
+                int end = 0;
+                while (end < n && buf[end] != 0) end++;
+                String name = new String(buf, 0, end);
+                if (target.equals(name)) {
+                    Log.i(TAG, "killZombies: killing stale peer pid=" + pid);
+                    android.os.Process.killProcess(pid);
+                }
+            } catch (Exception e) {
+                // Permission denied or process already gone
+            }
         }
     }
 }

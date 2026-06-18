@@ -31,7 +31,7 @@ public class ShizukuHelper {
                     new ComponentName(
                             BuildConfig.APPLICATION_ID,
                             RemapperUserService.class.getName()))
-                    .daemon(false)
+                    .daemon(true)
                     .processNameSuffix("remapper")
                     .debuggable(BuildConfig.DEBUG)
                     .version(BuildConfig.VERSION_CODE);
@@ -101,22 +101,30 @@ public class ShizukuHelper {
     }
 
     public void bindService() {
-        // Kill any old service process before binding to prevent stale EVIOCGRAB.
-        // This handles the case where the app was updated and the old process survived.
-        try {
-            Shizuku.unbindUserService(userServiceArgs, serviceConnection, true);
-        } catch (Exception ignored) {}
-        bound = false;
-        remapperService = null;
-        sService = null;
         Shizuku.bindUserService(userServiceArgs, serviceConnection);
     }
 
     public void unbindService() {
         if (bound) {
-            Shizuku.unbindUserService(userServiceArgs, serviceConnection, true);
+            Shizuku.unbindUserService(userServiceArgs, serviceConnection, false);
             bound = false;
         }
+    }
+
+    public void destroyService() {
+        if (remapperService != null) {
+            try {
+                remapperService.destroy();
+            } catch (Exception ignored) {}
+        }
+        if (bound) {
+            try {
+                Shizuku.unbindUserService(userServiceArgs, serviceConnection, true);
+            } catch (Exception ignored) {}
+            bound = false;
+        }
+        remapperService = null;
+        sService = null;
     }
 
     public void register() {
