@@ -12,9 +12,9 @@
                 android:type="linear"
                 android:startX="2" android:startY="0"
                 android:endX="26" android:endY="0"
-                android:startColor="#AAAAAA"
-                android:centerColor="#CCCCCC"
-                android:endColor="#AAAAAA"/>
+                android:startColor="#323232"
+                android:centerColor="#585858"
+                android:endColor="#323232"/>
         </aapt:attr>
     </path>
 </vector>
