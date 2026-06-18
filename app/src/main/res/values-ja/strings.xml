@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Stylus Remapper</string>
+
+    <!-- ═══ Header ═══ -->
+    <string name="shizuku_connected">Shizuku Connected</string>
+    <string name="shizuku_na">Shizuku: N/A</string>
+
+    <!-- ═══ Status badge ═══ -->
+    <string name="status_running">● 動作中</string>
+    <string name="status_stopped">● 停止中</string>
+    <string name="status_disconnected">● 未接続</string>
+    <string name="status_error">● エラー</string>
+    <string name="status_start_failed">● 起動失敗</string>
+    <string name="start_failed_detail">起動失敗: %s</string>
+
+    <!-- ═══ Profile bar ═══ -->
+    <string name="btn_new">新規</string>
+    <string name="btn_rename">名前変更</string>
+    <string name="btn_delete">削除</string>
+
+    <!-- ═══ Profile dialogs ═══ -->
+    <string name="dialog_new_profile_title">新規プロファイル</string>
+    <string name="dialog_new_profile_hint">プロファイル名</string>
+    <string name="dialog_new_profile_create">作成</string>
+    <string name="dialog_cancel">キャンセル</string>
+    <string name="dialog_rename_title">名前変更</string>
+    <string name="dialog_rename_confirm">変更</string>
+    <string name="dialog_delete_title">プロファイル削除</string>
+    <string name="dialog_delete_message">\"%s\" を削除しますか？</string>
+    <string name="dialog_delete_confirm">削除</string>
+    <string name="dialog_ok">OK</string>
+    <string name="error_cannot_rename_default">Defaultプロファイルは名前変更できません</string>
+    <string name="error_cannot_delete_default">Defaultプロファイルは削除できません</string>
+
+    <!-- ═══ Card section headers ═══ -->
+    <string name="section_button_mapping">ボタンマッピング</string>
+    <string name="section_custom">カスタム</string>
+
+    <!-- ═══ Card subtitles (physical button descriptions) ═══ -->
+    <string name="switch_1_subtitle">ペン先側ボタン</string>
+    <string name="switch_2_subtitle">上側ボタン</string>
+    <string name="switch_3_subtitle">同時押し</string>
+
+    <!-- ═══ Custom section labels ═══ -->
+    <string name="label_modifiers">修飾キー</string>
+    <string name="label_key">キー</string>
+    <string name="label_mouse_button">マウスボタン</string>
+    <string name="mouse_left">左</string>
+    <string name="mouse_middle">中</string>
+    <string name="mouse_right">右</string>
+
+    <!-- ═══ KeyDefinitions: translated parts ═══ -->
+    <string name="key_none_modifier_only">None (修飾キーのみ)</string>
+    <string name="mouse_left_click">左クリック</string>
+    <string name="mouse_middle_click">中クリック</string>
+    <string name="mouse_right_click">右クリック</string>
+    <string name="describe_none">None</string>
+
+    <!-- ═══ Preset descriptions ═══ -->
+    <string name="preset_desc_brush_size">ブラシサイズ</string>
+    <string name="preset_desc_canvas_drag">キャンバスドラッグ</string>
+    <string name="preset_desc_undo">元に戻す</string>
+    <string name="preset_desc_redo">やり直し</string>
+    <string name="preset_desc_eraser_toggle">消しゴム切替</string>
+    <string name="preset_desc_save">保存</string>
+    <string name="preset_desc_custom">カスタム</string>
+    <string name="preset_desc_canvas_pan">キャンバスパン</string>
+
+    <!-- ═══ Notification ═══ -->
+    <string name="notification_channel_name">Stylus Remapper</string>
+    <string name="notification_channel_description">スタイラスボタンリマッピングが有効です</string>
+    <string name="notification_title">Stylus Remapper</string>
+    <string name="notification_default_text">Remapping active</string>
+</resources>

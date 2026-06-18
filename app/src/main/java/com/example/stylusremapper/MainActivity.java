@@ -241,11 +241,11 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     private void showNewProfileDialog() {
         EditText input = new EditText(this);
-        input.setHint("プロファイル名");
+        input.setHint(R.string.dialog_new_profile_hint);
         new AlertDialog.Builder(this)
-                .setTitle("新規プロファイル")
+                .setTitle(R.string.dialog_new_profile_title)
                 .setView(input)
-                .setPositiveButton("作成", (d, w) -> {
+                .setPositiveButton(R.string.dialog_new_profile_create, (d, w) -> {
                     String name = input.getText().toString().trim();
                     if (name.isEmpty()) return;
                     // Check for duplicate names
@@ -260,7 +260,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                     profileManager.setActiveProfileName(name);
                     refreshProfileSpinner();
                 })
-                .setNegativeButton("キャンセル", null)
+                .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
     }
 
@@ -268,17 +268,17 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         String activeName = profileManager.getActiveProfileName();
         if ("Default".equals(activeName)) {
             new AlertDialog.Builder(this)
-                    .setMessage("Defaultプロファイルは名前変更できません")
-                    .setPositiveButton("OK", null)
+                    .setMessage(R.string.error_cannot_rename_default)
+                    .setPositiveButton(R.string.dialog_ok, null)
                     .show();
             return;
         }
         EditText input = new EditText(this);
         input.setText(activeName);
         new AlertDialog.Builder(this)
-                .setTitle("名前変更")
+                .setTitle(R.string.dialog_rename_title)
                 .setView(input)
-                .setPositiveButton("変更", (d, w) -> {
+                .setPositiveButton(R.string.dialog_rename_confirm, (d, w) -> {
                     String newName = input.getText().toString().trim();
                     if (newName.isEmpty() || newName.equals(activeName)) return;
                     for (ProfileManager.Profile p : profiles) {
@@ -291,7 +291,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
                     refreshProfileSpinner();
                     saveAndPushMappings(); // Update notification
                 })
-                .setNegativeButton("キャンセル", null)
+                .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
     }
 
@@ -299,22 +299,22 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         String activeName = profileManager.getActiveProfileName();
         if ("Default".equals(activeName)) {
             new AlertDialog.Builder(this)
-                    .setMessage("Defaultプロファイルは削除できません")
-                    .setPositiveButton("OK", null)
+                    .setMessage(R.string.error_cannot_delete_default)
+                    .setPositiveButton(R.string.dialog_ok, null)
                     .show();
             return;
         }
         new AlertDialog.Builder(this)
-                .setTitle("プロファイル削除")
-                .setMessage("\"" + activeName + "\" を削除しますか？")
-                .setPositiveButton("削除", (d, w) -> {
+                .setTitle(R.string.dialog_delete_title)
+                .setMessage(getString(R.string.dialog_delete_message, activeName))
+                .setPositiveButton(R.string.dialog_delete_confirm, (d, w) -> {
                     profiles.removeIf(p -> p.name.equals(activeName));
                     profileManager.saveProfiles(profiles);
                     profileManager.setActiveProfileName(profiles.get(0).name);
                     refreshProfileSpinner();
                     loadActiveProfile();
                 })
-                .setNegativeButton("キャンセル", null)
+                .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
     }
 
@@ -333,7 +333,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     private void setupButtons() {
         ArrayAdapter<String> keyAdapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, KeyDefinitions.KEY_NAMES);
+                this, android.R.layout.simple_spinner_item, KeyDefinitions.getKeyNames(this));
         keyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         for (int i = 0; i < 3; i++) {
@@ -412,7 +412,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
         // Collect preset indices, skipping CUSTOM_INDEX
         List<Integer> presetIndices = new ArrayList<>();
-        for (int p = 0; p < MappingPresets.LABELS.length; p++) {
+        for (int p = 0; p < MappingPresets.DESCRIPTION_IDS.length; p++) {
             if (p == MappingPresets.CUSTOM_INDEX) continue;
             presetIndices.add(p);
         }
@@ -474,7 +474,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
         // Key name (short label from describe)
         ButtonAction action = MappingPresets.PRESETS[presetIdx];
-        String keyName = KeyDefinitions.describe(action);
+        String keyName = KeyDefinitions.describe(this,action);
 
         TextView tvKey = new TextView(this);
         tvKey.setText(keyName);
@@ -484,15 +484,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         tvKey.setGravity(android.view.Gravity.CENTER);
         item.addView(tvKey);
 
-        // Description (extract the parenthetical part from LABELS, if any)
-        String label = MappingPresets.LABELS[presetIdx];
         String desc = "";
-        int parenStart = label.indexOf('(');
-        int parenEnd = label.lastIndexOf(')');
-        if (parenStart >= 0 && parenEnd > parenStart) {
-            desc = label.substring(parenStart + 1, parenEnd);
-        } else if (!label.equals(keyName)) {
-            desc = label;
+        int descId = MappingPresets.DESCRIPTION_IDS[presetIdx];
+        if (descId != 0) {
+            desc = getString(descId);
         }
 
         if (!desc.isEmpty()) {
@@ -545,7 +540,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         } else {
             a = MappingPresets.PRESETS[presetIndex];
         }
-        bc.currentMappingLabel.setText(KeyDefinitions.describe(a));
+        bc.currentMappingLabel.setText(KeyDefinitions.describe(this,a));
     }
 
     private void setCustomControls(ButtonConfig bc, int keycode, int metaState, int mouseButtons) {
@@ -562,7 +557,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         ButtonConfig bc = buttons[btnIndex];
         selectPresetInGrid(bc, MappingPresets.CUSTOM_INDEX);
         // Update current mapping label with current custom values
-        bc.currentMappingLabel.setText(KeyDefinitions.describe(computeMapping(btnIndex)));
+        bc.currentMappingLabel.setText(KeyDefinitions.describe(this,computeMapping(btnIndex)));
     }
 
     private ButtonAction computeMapping(int btnIndex) {
@@ -612,9 +607,9 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         // Build notification summary with profile name
         String activeName = profileManager.getActiveProfileName();
         String summary = "[" + activeName + "] "
-                + "1:" + KeyDefinitions.describe(mappings[0])
-                + " 2:" + KeyDefinitions.describe(mappings[1])
-                + " 3:" + KeyDefinitions.describe(mappings[2]);
+                + "1:" + KeyDefinitions.describe(this,mappings[0])
+                + " 2:" + KeyDefinitions.describe(this,mappings[1])
+                + " 3:" + KeyDefinitions.describe(this,mappings[2]);
         prefs.edit().putString("notification_summary", summary).apply();
 
         pushMappingsToService(mappings);
@@ -626,16 +621,16 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private void updateMappingSummary() {
         ButtonAction[] m = new ButtonAction[3];
         for (int i = 0; i < 3; i++) m[i] = computeMapping(i);
-        tvMappingSummary.setText("1:" + KeyDefinitions.describe(m[0])
-                + " · 2:" + KeyDefinitions.describe(m[1])
-                + " · 3:" + KeyDefinitions.describe(m[2]));
+        tvMappingSummary.setText("1:" + KeyDefinitions.describe(this,m[0])
+                + " · 2:" + KeyDefinitions.describe(this,m[1])
+                + " · 3:" + KeyDefinitions.describe(this,m[2]));
     }
 
     private void updateCurrentMappingLabels() {
         for (int i = 0; i < 3; i++) {
             ButtonConfig bc = buttons[i];
             ButtonAction a = computeMapping(i);
-            String desc = KeyDefinitions.describe(a);
+            String desc = KeyDefinitions.describe(this,a);
             bc.currentMappingLabel.setText(desc);
             penLabels[i].setText(desc);
         }
@@ -681,13 +676,11 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
             updateUI();
         } catch (RemoteException e) {
-            setRunBadge("● エラー", R.color.red);
+            setRunBadge(getString(R.string.status_error), R.color.red);
         } catch (RuntimeException e) {
-            // start() may rethrow service-side failures (e.g. InputManager init) across
-            // the binder. Surface it instead of silently leaving the toggle stuck.
-            setRunBadge("● 起動失敗", R.color.red);
+            setRunBadge(getString(R.string.status_start_failed), R.color.red);
             android.widget.Toast.makeText(this,
-                    "起動失敗: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+                    getString(R.string.start_failed_detail, e.getMessage()), android.widget.Toast.LENGTH_LONG).show();
         }
     }
 
@@ -695,7 +688,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         if (remapperService == null) {
             btnToggle.setEnabled(false);
             btnToggle.setSelected(false);
-            setRunBadge("● 未接続", R.color.text_muted);
+            setRunBadge(getString(R.string.status_disconnected), R.color.text_muted);
             return;
         }
         try {
@@ -703,10 +696,10 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             btnToggle.setEnabled(true);
             // ON = lit green, OFF = dim grey. (Previously inverted: ON showed red.)
             btnToggle.setSelected(running);
-            setRunBadge(running ? "● 動作中" : "● 停止中",
+            setRunBadge(getString(running ? R.string.status_running : R.string.status_stopped),
                     running ? R.color.green : R.color.text_secondary);
         } catch (RemoteException e) {
-            setRunBadge("● エラー", R.color.red);
+            setRunBadge(getString(R.string.status_error), R.color.red);
         }
     }
 
@@ -721,7 +714,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     public void onServiceConnected(IRemapperService service) {
         remapperService = service;
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku Connected");
+            tvShizukuStatus.setText(R.string.shizuku_connected);
             tvShizukuStatus.setVisibility(View.VISIBLE);
             try {
                 // Give the service the path to load libpengrab.so (EVIOCGRAB helper).
@@ -758,7 +751,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     public void onServiceDisconnected() {
         remapperService = null;
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku: N/A");
+            tvShizukuStatus.setText(R.string.shizuku_na);
             updateUI();
         });
     }
@@ -766,7 +759,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     @Override
     public void onPermissionResult(boolean granted) {
         runOnUiThread(() -> {
-            tvShizukuStatus.setText(granted ? "Shizuku Connected" : "Shizuku: N/A");
+            tvShizukuStatus.setText(getString(granted ? R.string.shizuku_connected : R.string.shizuku_na));
             tvShizukuStatus.setVisibility(View.VISIBLE);
         });
     }
@@ -774,7 +767,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     @Override
     public void onShizukuNotAvailable() {
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku: N/A");
+            tvShizukuStatus.setText(R.string.shizuku_na);
             updateUI();
         });
     }

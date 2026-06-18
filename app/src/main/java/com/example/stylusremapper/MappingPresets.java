@@ -25,18 +25,18 @@ public class MappingPresets {
         /*10 */ new ButtonAction(0, KeyEvent.KEYCODE_SPACE, ButtonAction.MOUSE_LEFT), // Left click + Space
     };
 
-    public static final String[] LABELS = {
-        "Ctrl+Alt (ブラシサイズ)",
-        "Space (キャンバスドラッグ)",
-        "Ctrl+Z (元に戻す)",
-        "Ctrl+Shift+Z (やり直し)",
-        "E (消しゴム切替)",
-        "Ctrl+S (保存)",
-        "Custom (カスタム)",
-        "左クリック",
-        "中クリック",
-        "右クリック",
-        "左クリック+Space (キャンバスパン)",
+    public static final int[] DESCRIPTION_IDS = {
+        /* 0  Ctrl+Alt         */ R.string.preset_desc_brush_size,
+        /* 1  Space            */ R.string.preset_desc_canvas_drag,
+        /* 2  Ctrl+Z           */ R.string.preset_desc_undo,
+        /* 3  Ctrl+Shift+Z     */ R.string.preset_desc_redo,
+        /* 4  E                */ R.string.preset_desc_eraser_toggle,
+        /* 5  Ctrl+S           */ R.string.preset_desc_save,
+        /* 6  Custom           */ R.string.preset_desc_custom,
+        /* 7  Left Click       */ 0,
+        /* 8  Middle Click     */ 0,
+        /* 9  Right Click      */ 0,
+        /* 10 LClick+Space     */ R.string.preset_desc_canvas_pan,
     };
 
     // Custom remains at its historical index (6). It is no longer the last entry, so this

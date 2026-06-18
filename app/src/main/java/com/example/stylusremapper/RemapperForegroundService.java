@@ -24,8 +24,8 @@ public class RemapperForegroundService extends Service {
     public void onCreate() {
         super.onCreate();
         NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID, "Stylus Remapper", NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("Stylus button remapping is active");
+                CHANNEL_ID, getString(R.string.notification_channel_name), NotificationManager.IMPORTANCE_LOW);
+        channel.setDescription(getString(R.string.notification_channel_description));
         getSystemService(NotificationManager.class).createNotificationChannel(channel);
 
         displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
@@ -49,14 +49,14 @@ public class RemapperForegroundService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         SharedPreferences prefs = getSharedPreferences("mappings", MODE_PRIVATE);
-        String summary = prefs.getString("notification_summary", "Remapping active");
+        String summary = prefs.getString("notification_summary", getString(R.string.notification_default_text));
 
         PendingIntent pi = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE);
 
         Notification notification = new Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("Stylus Remapper")
+                .setContentTitle(getString(R.string.notification_title))
                 .setContentText(summary)
                 .setSmallIcon(android.R.drawable.ic_menu_edit)
                 .setContentIntent(pi)

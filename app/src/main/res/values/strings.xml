@@ -1,4 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Stylus Remapper</string>
+
+    <!-- ═══ Non-translatable: technical labels ═══ -->
+    <string name="label_ctrl" translatable="false">Ctrl</string>
+    <string name="label_alt" translatable="false">Alt</string>
+    <string name="label_shift" translatable="false">Shift</string>
+    <string name="label_switch_1" translatable="false">Switch 1</string>
+    <string name="label_switch_2" translatable="false">Switch 2</string>
+    <string name="label_switch_3" translatable="false">Switch 3</string>
+
+    <!-- ═══ Header ═══ -->
+    <string name="shizuku_connected">Shizuku Connected</string>
+    <string name="shizuku_na">Shizuku: N/A</string>
+
+    <!-- ═══ Status badge ═══ -->
+    <string name="status_running">● Running</string>
+    <string name="status_stopped">● Stopped</string>
+    <string name="status_disconnected">● Disconnected</string>
+    <string name="status_error">● Error</string>
+    <string name="status_start_failed">● Start Failed</string>
+    <string name="start_failed_detail">Start failed: %s</string>
+
+    <!-- ═══ Profile bar ═══ -->
+    <string name="btn_new">New</string>
+    <string name="btn_rename">Rename</string>
+    <string name="btn_delete">Delete</string>
+
+    <!-- ═══ Profile dialogs ═══ -->
+    <string name="dialog_new_profile_title">New Profile</string>
+    <string name="dialog_new_profile_hint">Profile name</string>
+    <string name="dialog_new_profile_create">Create</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_rename_title">Rename</string>
+    <string name="dialog_rename_confirm">Change</string>
+    <string name="dialog_delete_title">Delete Profile</string>
+    <string name="dialog_delete_message">Delete \"%s\"?</string>
+    <string name="dialog_delete_confirm">Delete</string>
+    <string name="dialog_ok">OK</string>
+    <string name="error_cannot_rename_default">Cannot rename the Default profile</string>
+    <string name="error_cannot_delete_default">Cannot delete the Default profile</string>
+
+    <!-- ═══ Card section headers ═══ -->
+    <string name="section_button_mapping">BUTTON MAPPING</string>
+    <string name="section_custom">CUSTOM</string>
+
+    <!-- ═══ Card subtitles (physical button descriptions) ═══ -->
+    <string name="switch_1_subtitle">Tip-side button</string>
+    <string name="switch_2_subtitle">Upper button</string>
+    <string name="switch_3_subtitle">Both buttons</string>
+
+    <!-- ═══ Custom section labels ═══ -->
+    <string name="label_modifiers">Modifiers</string>
+    <string name="label_key">Key</string>
+    <string name="label_mouse_button">Mouse Button</string>
+    <string name="mouse_left">L</string>
+    <string name="mouse_middle">M</string>
+    <string name="mouse_right">R</string>
+
+    <!-- ═══ KeyDefinitions: translated parts ═══ -->
+    <string name="key_none_modifier_only">None (modifier only)</string>
+    <string name="mouse_left_click">Left Click</string>
+    <string name="mouse_middle_click">Middle Click</string>
+    <string name="mouse_right_click">Right Click</string>
+    <string name="describe_none">None</string>
+
+    <!-- ═══ Preset descriptions ═══ -->
+    <string name="preset_desc_brush_size">Brush size</string>
+    <string name="preset_desc_canvas_drag">Canvas drag</string>
+    <string name="preset_desc_undo">Undo</string>
+    <string name="preset_desc_redo">Redo</string>
+    <string name="preset_desc_eraser_toggle">Eraser toggle</string>
+    <string name="preset_desc_save">Save</string>
+    <string name="preset_desc_custom">Custom</string>
+    <string name="preset_desc_canvas_pan">Canvas pan</string>
+
+    <!-- ═══ Notification ═══ -->
+    <string name="notification_channel_name">Stylus Remapper</string>
+    <string name="notification_channel_description">Stylus button remapping is active</string>
+    <string name="notification_title">Stylus Remapper</string>
+    <string name="notification_default_text">Remapping active</string>
 </resources>

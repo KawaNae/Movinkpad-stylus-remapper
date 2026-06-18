@@ -1,5 +1,6 @@
 package com.example.stylusremapper;
 
+import android.content.Context;
 import android.view.KeyEvent;
 
 public class KeyDefinitions {
@@ -37,8 +38,8 @@ public class KeyDefinitions {
         KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PAGE_DOWN,
     };
 
-    public static final String[] KEY_NAMES = {
-        "None (修飾キーのみ)",
+    private static final String[] KEY_NAMES = {
+        "",
         // Letters
         "A", "B", "C", "D", "E", "F", "G", "H", "I",
         "J", "K", "L", "M", "N", "O", "P", "Q", "R",
@@ -53,6 +54,12 @@ public class KeyDefinitions {
         // Navigation
         "Up", "Down", "Left", "Right", "Home", "End", "PageUp", "PageDown",
     };
+
+    public static String[] getKeyNames(Context context) {
+        String[] names = KEY_NAMES.clone();
+        names[0] = context.getString(R.string.key_none_modifier_only);
+        return names;
+    }
 
     /** Get display name for a keycode. */
     public static String getKeyName(int keycode) {
@@ -73,23 +80,22 @@ public class KeyDefinitions {
         return 0;
     }
 
-    /** Display names for mouse buttons. */
-    public static String mouseButtonsName(int mouseButtons) {
+    public static String mouseButtonsName(Context context, int mouseButtons) {
         StringBuilder sb = new StringBuilder();
-        if ((mouseButtons & ButtonAction.MOUSE_LEFT) != 0) sb.append("左クリック");
+        if ((mouseButtons & ButtonAction.MOUSE_LEFT) != 0)
+            sb.append(context.getString(R.string.mouse_left_click));
         if ((mouseButtons & ButtonAction.MOUSE_MIDDLE) != 0) {
             if (sb.length() > 0) sb.append("+");
-            sb.append("中クリック");
+            sb.append(context.getString(R.string.mouse_middle_click));
         }
         if ((mouseButtons & ButtonAction.MOUSE_RIGHT) != 0) {
             if (sb.length() > 0) sb.append("+");
-            sb.append("右クリック");
+            sb.append(context.getString(R.string.mouse_right_click));
         }
         return sb.toString();
     }
 
-    /** Build a short description like "Ctrl+Alt", "Ctrl+Z", "Space", "左クリック", "Space+左クリック". */
-    public static String describe(ButtonAction action) {
+    public static String describe(Context context, ButtonAction action) {
         StringBuilder sb = new StringBuilder();
         if ((action.meta & KeyEvent.META_CTRL_ON) != 0) sb.append("Ctrl+");
         if ((action.meta & KeyEvent.META_ALT_ON) != 0) sb.append("Alt+");
@@ -99,15 +105,14 @@ public class KeyDefinitions {
         if (action.hasKey()) primary.append(getKeyName(action.keycode));
         if (action.hasMouse()) {
             if (primary.length() > 0) primary.append("+");
-            primary.append(mouseButtonsName(action.mouseButtons));
+            primary.append(mouseButtonsName(context, action.mouseButtons));
         }
 
         if (primary.length() == 0) {
-            // Modifier-only: drop trailing '+'
             if (sb.length() > 0) {
                 sb.setLength(sb.length() - 1);
             } else {
-                sb.append("None");
+                sb.append(context.getString(R.string.describe_none));
             }
         } else {
             sb.append(primary);
