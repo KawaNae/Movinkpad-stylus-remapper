@@ -11,12 +11,13 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -33,7 +34,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
     private TextView tvShizukuStatus;
     private TextView tvRemapperStatus;
-    private Button btnToggle;
+    private View btnToggle;
 
     private boolean suppressListeners = true;
 
@@ -44,22 +45,40 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     private ArrayAdapter<String> profileAdapter;
     private List<String> profileNames = new ArrayList<>();
 
+    // Mapping summary
+    private TextView tvMappingSummary;
+
+    // Pen indicators
+    private View[] penBtns;
+
+    // Card expand/collapse
+    private int expandedCard = 0;
+
     // Button config
     private static class ButtonConfig {
-        Spinner presetSpinner;
+        LinearLayout cardContainer;
+        LinearLayout cardBody;
+        View cardDivider;
+        TextView cardNum;
+        TextView currentMappingLabel;
+        TextView chevron;
+        ViewGroup presetGrid;
+        int selectedPresetIndex;
         CheckBox cbCtrl, cbAlt, cbShift;
         Spinner keySpinner;
-        // The mouse-button part of this button's action. The current UI has no widget for it,
-        // so it is tracked here and preserved across preset<->Custom transitions (the preset
-        // dropdown effectively degrades to "Custom" on reload, which must not drop the mouse part).
-        int mouseButtons;
+        CheckBox cbMouseLeft, cbMouseMiddle, cbMouseRight;
     }
     private final ButtonConfig[] buttons = new ButtonConfig[3];
 
-    private static final int[][] VIEW_IDS = {
-        {R.id.spinnerPreset1, R.id.cbCtrl1, R.id.cbAlt1, R.id.cbShift1, R.id.spinnerKey1},
-        {R.id.spinnerPreset2, R.id.cbCtrl2, R.id.cbAlt2, R.id.cbShift2, R.id.spinnerKey2},
-        {R.id.spinnerPreset3, R.id.cbCtrl3, R.id.cbAlt3, R.id.cbShift3, R.id.spinnerKey3},
+    private static final int[][] CARD_IDS = {
+        {R.id.card1, R.id.cardHeader1, R.id.cardBody1, R.id.cardDivider1, R.id.cardNum1, R.id.tvCurrentMapping1, R.id.chevron1, R.id.presetGrid1},
+        {R.id.card2, R.id.cardHeader2, R.id.cardBody2, R.id.cardDivider2, R.id.cardNum2, R.id.tvCurrentMapping2, R.id.chevron2, R.id.presetGrid2},
+        {R.id.card3, R.id.cardHeader3, R.id.cardBody3, R.id.cardDivider3, R.id.cardNum3, R.id.tvCurrentMapping3, R.id.chevron3, R.id.presetGrid3},
+    };
+    private static final int[][] CONTROL_IDS = {
+        {R.id.cbCtrl1, R.id.cbAlt1, R.id.cbShift1, R.id.spinnerKey1, R.id.cbMouseL1, R.id.cbMouseM1, R.id.cbMouseR1},
+        {R.id.cbCtrl2, R.id.cbAlt2, R.id.cbShift2, R.id.spinnerKey2, R.id.cbMouseL2, R.id.cbMouseM2, R.id.cbMouseR2},
+        {R.id.cbCtrl3, R.id.cbAlt3, R.id.cbShift3, R.id.spinnerKey3, R.id.cbMouseL3, R.id.cbMouseM3, R.id.cbMouseR3},
     };
 
     @Override
@@ -71,8 +90,12 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         tvTitle.setText("Stylus Remapper v" + BuildConfig.VERSION_NAME);
 
         tvShizukuStatus = findViewById(R.id.tvShizukuStatus);
-        tvRemapperStatus = findViewById(R.id.tvRemapperStatus);
+        tvMappingSummary = findViewById(R.id.tvMappingSummary);
+
+        // Power button
         btnToggle = findViewById(R.id.btnToggle);
+        tvRemapperStatus = findViewById(R.id.tvRemapperStatus);
+        btnToggle.setOnClickListener(v -> toggleRemapper());
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         profileManager = new ProfileManager(prefs);
@@ -85,15 +108,51 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
         }
 
+        // Pen indicators
+        penBtns = new View[]{
+            findViewById(R.id.penBtn1),
+            findViewById(R.id.penBtn2),
+            findViewById(R.id.penBtn3)
+        };
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            penBtns[i].setOnClickListener(v -> expandCard(idx));
+        }
+
         setupProfileUI();
         setupButtons();
         loadActiveProfile();
 
+        // Expand first card by default
+        expandCard(0);
+
         shizukuHelper = new ShizukuHelper();
         shizukuHelper.setCallback(this);
         shizukuHelper.register();
+    }
 
-        btnToggle.setOnClickListener(v -> toggleRemapper());
+    // --- Card expand/collapse ---
+
+    private void expandCard(int index) {
+        for (int i = 0; i < 3; i++) {
+            ButtonConfig bc = buttons[i];
+            boolean expanded = (i == index);
+            bc.cardBody.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            bc.cardDivider.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            bc.cardContainer.setBackgroundResource(expanded ? R.drawable.bg_card_expanded : R.drawable.bg_card);
+            bc.cardNum.setBackgroundResource(expanded ? R.drawable.bg_number_badge_active : R.drawable.bg_number_badge);
+            bc.cardNum.setTextColor(getColor(expanded ? R.color.amber : R.color.text_muted));
+            bc.chevron.setText(expanded ? "▴" : "▾");
+            bc.chevron.setTextColor(getColor(expanded ? R.color.amber : R.color.text_muted));
+        }
+        expandedCard = index;
+        updatePenIndicators(index);
+    }
+
+    private void updatePenIndicators(int activeCard) {
+        for (int i = 0; i < 3; i++) {
+            penBtns[i].setSelected(i == activeCard);
+        }
     }
 
     // --- Profile UI ---
@@ -149,14 +208,12 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         for (int i = 0; i < 3; i++) {
             ButtonConfig bc = buttons[i];
             int presetIndex = profile.presetIndices[i];
-            bc.presetSpinner.setSelection(presetIndex);
 
             ButtonAction a = (presetIndex == MappingPresets.CUSTOM_INDEX)
                     ? profile.actions[i]
                     : MappingPresets.PRESETS[presetIndex];
-            bc.mouseButtons = a.mouseButtons;
-            setCustomControls(bc, a.keycode, a.meta);
-            setCustomControlsEnabled(bc, presetIndex == MappingPresets.CUSTOM_INDEX);
+            setCustomControls(bc, a.keycode, a.meta, a.mouseButtons);
+            selectPresetInGrid(bc, presetIndex);
         }
         suppressListeners = false;
 
@@ -247,7 +304,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         ProfileManager.Profile profile = new ProfileManager.Profile();
         profile.name = activeName;
         for (int i = 0; i < 3; i++) {
-            profile.presetIndices[i] = buttons[i].presetSpinner.getSelectedItemPosition();
+            profile.presetIndices[i] = buttons[i].selectedPresetIndex;
             profile.actions[i] = computeMapping(i);
         }
         return profile;
@@ -256,50 +313,47 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     // --- Button setup ---
 
     private void setupButtons() {
-        ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, MappingPresets.LABELS);
-        presetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
         ArrayAdapter<String> keyAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, KeyDefinitions.KEY_NAMES);
         keyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         for (int i = 0; i < 3; i++) {
             ButtonConfig bc = new ButtonConfig();
-            bc.presetSpinner = findViewById(VIEW_IDS[i][0]);
-            bc.cbCtrl = findViewById(VIEW_IDS[i][1]);
-            bc.cbAlt = findViewById(VIEW_IDS[i][2]);
-            bc.cbShift = findViewById(VIEW_IDS[i][3]);
-            bc.keySpinner = findViewById(VIEW_IDS[i][4]);
+
+            // Card structure
+            bc.cardContainer = findViewById(CARD_IDS[i][0]);
+            LinearLayout cardHeader = findViewById(CARD_IDS[i][1]);
+            bc.cardBody = findViewById(CARD_IDS[i][2]);
+            bc.cardDivider = findViewById(CARD_IDS[i][3]);
+            bc.cardNum = findViewById(CARD_IDS[i][4]);
+            bc.currentMappingLabel = findViewById(CARD_IDS[i][5]);
+            bc.chevron = findViewById(CARD_IDS[i][6]);
+            bc.presetGrid = findViewById(CARD_IDS[i][7]);
+
+            // Controls
+            bc.cbCtrl = findViewById(CONTROL_IDS[i][0]);
+            bc.cbAlt = findViewById(CONTROL_IDS[i][1]);
+            bc.cbShift = findViewById(CONTROL_IDS[i][2]);
+            bc.keySpinner = findViewById(CONTROL_IDS[i][3]);
+            bc.cbMouseLeft = findViewById(CONTROL_IDS[i][4]);
+            bc.cbMouseMiddle = findViewById(CONTROL_IDS[i][5]);
+            bc.cbMouseRight = findViewById(CONTROL_IDS[i][6]);
+
+            bc.selectedPresetIndex = MappingPresets.CUSTOM_INDEX;
             buttons[i] = bc;
 
-            bc.presetSpinner.setAdapter(presetAdapter);
             bc.keySpinner.setAdapter(keyAdapter);
 
+            // Build preset grid
+            buildPresetGrid(bc, i);
+
+            // Card header click -> expand
             final int btnIndex = i;
+            cardHeader.setOnClickListener(v -> expandCard(btnIndex));
 
-            bc.presetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (suppressListeners) return;
-                    suppressListeners = true;
-                    if (position == MappingPresets.CUSTOM_INDEX) {
-                        setCustomControlsEnabled(buttons[btnIndex], true);
-                    } else {
-                        ButtonAction a = MappingPresets.PRESETS[position];
-                        buttons[btnIndex].mouseButtons = a.mouseButtons;
-                        setCustomControls(buttons[btnIndex], a.keycode, a.meta);
-                        setCustomControlsEnabled(buttons[btnIndex], false);
-                    }
-                    suppressListeners = false;
-                    saveAndPushMappings();
-                }
-
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
-
+            // Modifier checkbox listeners
             CompoundButton.OnCheckedChangeListener checkListener = (buttonView, isChecked) -> {
+                buttonView.setTextColor(getColor(isChecked ? R.color.amber : R.color.text_muted));
                 if (suppressListeners) return;
                 switchToCustom(btnIndex);
                 saveAndPushMappings();
@@ -308,6 +362,18 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             bc.cbAlt.setOnCheckedChangeListener(checkListener);
             bc.cbShift.setOnCheckedChangeListener(checkListener);
 
+            // Mouse checkbox listeners
+            CompoundButton.OnCheckedChangeListener mouseListener = (buttonView, isChecked) -> {
+                buttonView.setTextColor(getColor(isChecked ? R.color.amber : R.color.text_muted));
+                if (suppressListeners) return;
+                switchToCustom(btnIndex);
+                saveAndPushMappings();
+            };
+            bc.cbMouseLeft.setOnCheckedChangeListener(mouseListener);
+            bc.cbMouseMiddle.setOnCheckedChangeListener(mouseListener);
+            bc.cbMouseRight.setOnCheckedChangeListener(mouseListener);
+
+            // Key spinner listener
             bc.keySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -322,44 +388,189 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
         }
     }
 
-    private void setCustomControls(ButtonConfig bc, int keycode, int metaState) {
+    private void buildPresetGrid(ButtonConfig bc, int btnIndex) {
+        bc.presetGrid.removeAllViews();
+
+        // Collect preset indices, skipping CUSTOM_INDEX
+        List<Integer> presetIndices = new ArrayList<>();
+        for (int p = 0; p < MappingPresets.LABELS.length; p++) {
+            if (p == MappingPresets.CUSTOM_INDEX) continue;
+            presetIndices.add(p);
+        }
+
+        // Build rows of 3
+        LinearLayout currentRow = null;
+        for (int j = 0; j < presetIndices.size(); j++) {
+            if (j % 3 == 0) {
+                currentRow = new LinearLayout(this);
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                currentRow.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+                if (j > 0) {
+                    ((LinearLayout.LayoutParams) currentRow.getLayoutParams()).topMargin =
+                            (int) (6 * getResources().getDisplayMetrics().density);
+                }
+                bc.presetGrid.addView(currentRow);
+            }
+
+            final int presetIdx = presetIndices.get(j);
+            LinearLayout item = createPresetItem(presetIdx, bc, btnIndex);
+            currentRow.addView(item);
+        }
+
+        // Pad the last row with invisible spacers if needed
+        int remainder = presetIndices.size() % 3;
+        if (remainder != 0 && currentRow != null) {
+            for (int k = remainder; k < 3; k++) {
+                View spacer = new View(this);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                lp.setMarginStart((int) (6 * getResources().getDisplayMetrics().density));
+                spacer.setLayoutParams(lp);
+                currentRow.addView(spacer);
+            }
+        }
+    }
+
+    private LinearLayout createPresetItem(int presetIdx, ButtonConfig bc, int btnIndex) {
+        float density = getResources().getDisplayMetrics().density;
+
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setBackgroundResource(R.drawable.bg_preset);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        if (presetIdx != 0) { // Not the very first item in a row — but we handle margins by position
+            // We'll set margins uniformly and let the row handle spacing
+        }
+        int margin = (int) (3 * density);
+        lp.setMargins(margin, 0, margin, 0);
+        item.setLayoutParams(lp);
+        int pad = (int) (10 * density);
+        item.setPadding(pad, (int) (8 * density), pad, (int) (8 * density));
+        item.setGravity(android.view.Gravity.CENTER);
+        item.setClickable(true);
+        item.setFocusable(true);
+
+        // Key name (short label from describe)
+        ButtonAction action = MappingPresets.PRESETS[presetIdx];
+        String keyName = KeyDefinitions.describe(action);
+
+        TextView tvKey = new TextView(this);
+        tvKey.setText(keyName);
+        tvKey.setTextSize(12);
+        tvKey.setTextColor(getColor(R.color.text_primary));
+        tvKey.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tvKey.setGravity(android.view.Gravity.CENTER);
+        item.addView(tvKey);
+
+        // Description (extract the parenthetical part from LABELS, if any)
+        String label = MappingPresets.LABELS[presetIdx];
+        String desc = "";
+        int parenStart = label.indexOf('(');
+        int parenEnd = label.lastIndexOf(')');
+        if (parenStart >= 0 && parenEnd > parenStart) {
+            desc = label.substring(parenStart + 1, parenEnd);
+        } else if (!label.equals(keyName)) {
+            desc = label;
+        }
+
+        if (!desc.isEmpty()) {
+            TextView tvDesc = new TextView(this);
+            tvDesc.setText(desc);
+            tvDesc.setTextSize(9);
+            tvDesc.setTextColor(getColor(R.color.text_muted));
+            tvDesc.setGravity(android.view.Gravity.CENTER);
+            tvDesc.setPadding(0, (int) (2 * density), 0, 0);
+            item.addView(tvDesc);
+        }
+
+        // Tag for identification
+        item.setTag(presetIdx);
+
+        item.setOnClickListener(v -> {
+            if (suppressListeners) return;
+            suppressListeners = true;
+            selectPresetInGrid(bc, presetIdx);
+            ButtonAction a = MappingPresets.PRESETS[presetIdx];
+            setCustomControls(bc, a.keycode, a.meta, a.mouseButtons);
+            suppressListeners = false;
+            saveAndPushMappings();
+        });
+
+        return item;
+    }
+
+    private void selectPresetInGrid(ButtonConfig bc, int presetIndex) {
+        bc.selectedPresetIndex = presetIndex;
+
+        // Update selection state on all preset items in the grid
+        for (int r = 0; r < bc.presetGrid.getChildCount(); r++) {
+            View rowView = bc.presetGrid.getChildAt(r);
+            if (!(rowView instanceof LinearLayout)) continue;
+            LinearLayout row = (LinearLayout) rowView;
+            for (int c = 0; c < row.getChildCount(); c++) {
+                View child = row.getChildAt(c);
+                if (child.getTag() instanceof Integer) {
+                    int idx = (int) child.getTag();
+                    child.setSelected(idx == presetIndex);
+                }
+            }
+        }
+
+        // Update current mapping label
+        ButtonAction a;
+        if (presetIndex == MappingPresets.CUSTOM_INDEX) {
+            a = computeMapping(bc);
+        } else {
+            a = MappingPresets.PRESETS[presetIndex];
+        }
+        bc.currentMappingLabel.setText(KeyDefinitions.describe(a));
+    }
+
+    private void setCustomControls(ButtonConfig bc, int keycode, int metaState, int mouseButtons) {
         bc.cbCtrl.setChecked((metaState & KeyEvent.META_CTRL_ON) != 0);
         bc.cbAlt.setChecked((metaState & KeyEvent.META_ALT_ON) != 0);
         bc.cbShift.setChecked((metaState & KeyEvent.META_SHIFT_ON) != 0);
         bc.keySpinner.setSelection(KeyDefinitions.indexOfKeycode(keycode));
-    }
-
-    private void setCustomControlsEnabled(ButtonConfig bc, boolean enabled) {
-        bc.cbCtrl.setEnabled(enabled);
-        bc.cbAlt.setEnabled(enabled);
-        bc.cbShift.setEnabled(enabled);
-        bc.keySpinner.setEnabled(enabled);
+        bc.cbMouseLeft.setChecked((mouseButtons & ButtonAction.MOUSE_LEFT) != 0);
+        bc.cbMouseMiddle.setChecked((mouseButtons & ButtonAction.MOUSE_MIDDLE) != 0);
+        bc.cbMouseRight.setChecked((mouseButtons & ButtonAction.MOUSE_RIGHT) != 0);
     }
 
     private void switchToCustom(int btnIndex) {
-        suppressListeners = true;
-        buttons[btnIndex].presetSpinner.setSelection(MappingPresets.CUSTOM_INDEX);
-        setCustomControlsEnabled(buttons[btnIndex], true);
-        suppressListeners = false;
+        ButtonConfig bc = buttons[btnIndex];
+        selectPresetInGrid(bc, MappingPresets.CUSTOM_INDEX);
+        // Update current mapping label with current custom values
+        bc.currentMappingLabel.setText(KeyDefinitions.describe(computeMapping(btnIndex)));
     }
 
     private ButtonAction computeMapping(int btnIndex) {
-        ButtonConfig bc = buttons[btnIndex];
-        int presetIndex = bc.presetSpinner.getSelectedItemPosition();
+        return computeMapping(buttons[btnIndex]);
+    }
+
+    private ButtonAction computeMapping(ButtonConfig bc) {
+        int presetIndex = bc.selectedPresetIndex;
 
         if (presetIndex != MappingPresets.CUSTOM_INDEX) {
             return MappingPresets.PRESETS[presetIndex];
         }
 
-        // Custom mode edits the modifier + key parts via widgets; the mouse part has no widget
-        // yet, so it is carried in bc.mouseButtons (preserved across preset<->Custom transitions).
+        // Custom mode: read all values from widgets
         int meta = 0;
         if (bc.cbCtrl.isChecked()) meta |= KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON;
         if (bc.cbAlt.isChecked()) meta |= KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON;
         if (bc.cbShift.isChecked()) meta |= KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON;
 
         int keycode = KeyDefinitions.KEY_CODES[bc.keySpinner.getSelectedItemPosition()];
-        return new ButtonAction(meta, keycode, bc.mouseButtons);
+
+        int mouseButtons = 0;
+        if (bc.cbMouseLeft.isChecked()) mouseButtons |= ButtonAction.MOUSE_LEFT;
+        if (bc.cbMouseMiddle.isChecked()) mouseButtons |= ButtonAction.MOUSE_MIDDLE;
+        if (bc.cbMouseRight.isChecked()) mouseButtons |= ButtonAction.MOUSE_RIGHT;
+
+        return new ButtonAction(meta, keycode, mouseButtons);
     }
 
     private void saveAndPushMappings() {
@@ -389,6 +600,24 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
 
         pushMappingsToService(mappings);
         updateNotification();
+        updateMappingSummary();
+        updateCurrentMappingLabels();
+    }
+
+    private void updateMappingSummary() {
+        ButtonAction[] m = new ButtonAction[3];
+        for (int i = 0; i < 3; i++) m[i] = computeMapping(i);
+        tvMappingSummary.setText("1:" + KeyDefinitions.describe(m[0])
+                + " · 2:" + KeyDefinitions.describe(m[1])
+                + " · 3:" + KeyDefinitions.describe(m[2]));
+    }
+
+    private void updateCurrentMappingLabels() {
+        for (int i = 0; i < 3; i++) {
+            ButtonConfig bc = buttons[i];
+            ButtonAction a = computeMapping(i);
+            bc.currentMappingLabel.setText(KeyDefinitions.describe(a));
+        }
     }
 
     private void pushMappingsToService(ButtonAction[] mappings) {
@@ -431,24 +660,24 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
             }
             updateUI();
         } catch (RemoteException e) {
-            tvRemapperStatus.setText("Remapper: Error");
+            tvRemapperStatus.setTextColor(getColor(R.color.red));
         }
     }
 
     private void updateUI() {
         if (remapperService == null) {
-            tvRemapperStatus.setText("Remapper: Disconnected");
             btnToggle.setEnabled(false);
-            btnToggle.setText("Start");
+            btnToggle.setSelected(false);
+            tvRemapperStatus.setTextColor(getColor(R.color.text_muted));
             return;
         }
         try {
             boolean running = remapperService.isRunning();
-            tvRemapperStatus.setText(running ? "Remapper: Running" : "Remapper: Stopped");
-            btnToggle.setText(running ? "Stop" : "Start");
+            btnToggle.setSelected(running);
             btnToggle.setEnabled(true);
+            tvRemapperStatus.setTextColor(getColor(running ? R.color.red : R.color.green));
         } catch (RemoteException e) {
-            tvRemapperStatus.setText("Remapper: Error");
+            tvRemapperStatus.setTextColor(getColor(R.color.red));
         }
     }
 
@@ -458,7 +687,8 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     public void onServiceConnected(IRemapperService service) {
         remapperService = service;
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku: Connected");
+            tvShizukuStatus.setText("Shizuku Connected");
+            tvShizukuStatus.setVisibility(View.VISIBLE);
             try {
                 // Give the service the path to load libpengrab.so (EVIOCGRAB helper).
                 remapperService.init(getApplicationInfo().nativeLibraryDir);
@@ -494,7 +724,7 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     public void onServiceDisconnected() {
         remapperService = null;
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku: Disconnected");
+            tvShizukuStatus.setText("Shizuku: N/A");
             updateUI();
         });
     }
@@ -502,14 +732,15 @@ public class MainActivity extends Activity implements ShizukuHelper.Callback {
     @Override
     public void onPermissionResult(boolean granted) {
         runOnUiThread(() -> {
-            tvShizukuStatus.setText(granted ? "Shizuku: Permission granted" : "Shizuku: Permission denied");
+            tvShizukuStatus.setText(granted ? "Shizuku Connected" : "Shizuku: N/A");
+            tvShizukuStatus.setVisibility(View.VISIBLE);
         });
     }
 
     @Override
     public void onShizukuNotAvailable() {
         runOnUiThread(() -> {
-            tvShizukuStatus.setText("Shizuku: Not available");
+            tvShizukuStatus.setText("Shizuku: N/A");
             updateUI();
         });
     }
