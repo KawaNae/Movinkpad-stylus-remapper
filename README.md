@@ -4,97 +4,114 @@
   <img src="docs/screenshot.png" alt="Stylus Remapper screenshot" width="800">
 </p>
 
-Wacom MovinkPad Pro 14 の Pro Pen 3 サイドボタンをキーボードショートカットにリマップする Android アプリです。
+**[日本語版はこちら](README.ja.md)**
 
-CLIP STUDIO PAINT など、スタイラスボタンのネイティブ対応が不十分なアプリでの利用を想定しています。
+An Android app that remaps the side buttons of the Wacom Pro Pen 3 on the MovinkPad Pro 14 to keyboard shortcuts and mouse clicks.
 
-## 機能
+Designed for apps like CLIP STUDIO PAINT that lack native stylus button support on Android.
 
-- **カスタムキーコンビネーション**: 修飾キー0〜3個 (Ctrl, Alt, Shift) + 文字/ファンクションキー0〜1個の任意の組み合わせ
-- **プロファイル機能**: 名前付きプロファイルを複数保存し、一括切替（例: ClipStudio, MediBang）
-- **プリセット**: よく使うキー設定をワンタップで選択（Ctrl+Alt, Space, Ctrl+Z 等）
-- **通知表示**: 現在のプロファイル名とキー設定をステータスバーに表示
+## Features
 
-### デフォルトマッピング
+- **Keyboard shortcut mapping** — Any combination of modifiers (Ctrl, Alt, Shift) + a key
+- **Mouse button mapping** — Left / Middle / Right click, or key+click combos (e.g. Left Click + Space for canvas panning)
+- **Preset gallery** — One-tap selection of common mappings (Ctrl+Z, Space, Ctrl+Alt, etc.)
+- **Profiles** — Save multiple named profiles and switch between them (e.g. ClipStudio, MediBang)
+- **Notification** — Shows current profile name and key assignments in the status bar
+- **Light / Dark mode** — Follows system theme automatically
+- **i18n** — English and Japanese supported; add `values-XX/strings.xml` to contribute a new language
+- **Screen rotation** — Mappings work correctly in any orientation
+- **Palm rejection** — Only pen button events are captured; touch input is unaffected
 
-| ボタン | 位置 | 割り当て | 用途 (CSP) |
-|--------|------|----------|------------|
-| Button 1 | ペン先側 | Ctrl+Alt | ブラシサイズ変更 |
-| Button 2 | 中央 | Space | キャンバスドラッグ |
-| Button 3 | ペン先から遠い側 | Ctrl+Z | 元に戻す |
+### Default Mappings
 
-## 必要なもの
+| Switch | Position | Mapping | Use Case (CSP) |
+|--------|----------|---------|----------------|
+| Switch 1 | Tip side | Ctrl+Alt | Brush size |
+| Switch 2 | Upper | Space | Canvas drag |
+| Switch 3 | Both buttons | Ctrl+Z | Undo |
+
+## Requirements
 
 - Wacom MovinkPad Pro 14 (Android 14)
-- [Shizuku](https://shizuku.rikka.app/) アプリ（インストール済み＆起動済み）
-- 初回セットアップ時のみ ADB 接続（ワイヤレスデバッグまたは USB）
+- [Shizuku](https://shizuku.rikka.app/) installed and running
+- ADB connection for initial Shizuku setup only (wireless debugging or USB)
 
-## ダウンロード
+## Download
 
-[Releases ページ](https://github.com/KawaNae/Movinkpad-stylus-remapper/releases/latest) から APK をダウンロードしてインストールできます。
+Download the APK from the [Releases page](https://github.com/KawaNae/Movinkpad-stylus-remapper/releases/latest).
 
-## セットアップ
+## Setup
 
-### 1. Shizuku の準備
+### 1. Prepare Shizuku
 
-1. [Shizuku](https://shizuku.rikka.app/download/) をインストール
-2. 以下のいずれかで Shizuku を起動:
-   - **ワイヤレスデバッグ** (Android 11+): 開発者オプション → ワイヤレスデバッグを有効 → Shizuku アプリから起動
-   - **ADB 経由**: PC から `adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh`
+1. Install [Shizuku](https://shizuku.rikka.app/download/)
+2. Start Shizuku using one of:
+   - **Wireless debugging** (Android 11+): Developer options → Enable wireless debugging → Start from Shizuku app
+   - **ADB**: Run `adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh` from a PC
 
-### 2. アプリのインストール
+### 2. Install the App
 
-[Releases](https://github.com/KawaNae/Movinkpad-stylus-remapper/releases/latest) から APK をダウンロードしてインストール。
+Download the APK from [Releases](https://github.com/KawaNae/Movinkpad-stylus-remapper/releases/latest) and install it.
 
-ソースからビルドする場合:
+To build from source:
 ```bash
 ./gradlew assembleDebug
-adb install app/build/outputs/apk/debug/MovinkpadStylusRemapper-v2.0.apk
+adb install app/build/outputs/apk/debug/MovinkpadStylusRemapper-v3.1.1.apk
 ```
 
-### 3. 使い方
+### 3. Usage
 
-1. Shizuku が起動していることを確認
-2. Stylus Remapper を開く
-3. Shizuku の権限ダイアログで「許可」
-4. 「Start」ボタンをタップ
+1. Make sure Shizuku is running
+2. Open Stylus Remapper
+3. Grant permission in the Shizuku dialog
+4. The remapper starts automatically when connected — tap the status badge to start/stop
 
-## 仕組み
+## How It Works
 
-- `/dev/input/event6` から Linux の生入力イベント（`input_event` 構造体）を読み取り
-- Pro Pen 3 のサイドボタン押下を検出（`EV_KEY`: `0x14b`, `0x14c`）
-- `InputManager.injectInputEvent()` でキーイベントを注入
-- Shizuku の UserService として特権プロセスで動作（ADB shell 相当の権限）
+- Reads raw Linux input events (`input_event` structs) from `/dev/input/event*`
+- Detects Pro Pen 3 side button presses (`EV_KEY`: `0x14b`, `0x14c`)
+- Full proxy architecture: grabs the input device with `EVIOCGRAB`, re-injects all non-button events, and injects mapped key/mouse events via `InputManager.injectInputEvent()`
+- Runs as a Shizuku UserService (ADB shell-level privileges)
+- Native `libpengrab.so` handles the low-level `EVIOCGRAB` operations
 
-## プロジェクト構成
+## Project Structure
 
 ```
 app/src/main/
-├── aidl/.../IRemapperService.aidl    # IPC インターフェース
+├── aidl/.../IRemapperService.aidl     # IPC interface
+├── cpp/pengrab.c                      # Native EVIOCGRAB helper
 ├── java/.../
-│   ├── MainActivity.java             # UI（プロファイル・ボタン設定・Start/Stop）
-│   ├── RemapperUserService.java      # コアロジック（Shizuku 特権プロセス）
-│   ├── RemapperForegroundService.java # 常駐通知（設定表示）
-│   ├── ShizukuHelper.java            # Shizuku 権限・バインディング管理
-│   ├── MappingPresets.java           # プリセット定義
-│   ├── KeyDefinitions.java           # キー一覧・表示名ユーティリティ
-│   └── ProfileManager.java           # プロファイル保存・読込管理
-└── res/                              # レイアウト・リソース
+│   ├── MainActivity.java              # UI (profiles, button config, start/stop)
+│   ├── RemapperUserService.java       # Core logic (Shizuku privileged process)
+│   ├── RemapperForegroundService.java # Persistent notification
+│   ├── ShizukuHelper.java            # Shizuku permission & binding
+│   ├── PenGrab.java                  # JNI bridge for libpengrab.so
+│   ├── MappingPresets.java           # Preset definitions
+│   ├── KeyDefinitions.java          # Key list & display name utilities
+│   ├── ProfileManager.java          # Profile save/load
+│   └── ButtonAction.java            # Mapping data model (Parcelable)
+└── res/
+    ├── layout/                       # UI layout
+    ├── drawable/                     # Icons & backgrounds
+    ├── values/                       # English strings, colors, themes
+    ├── values-ja/                    # Japanese strings
+    └── values-night/                 # Dark mode colors & themes
 ```
 
-## 注意事項
+## Notes
 
-- Shizuku は再起動のたびに再起動が必要です（root なしの場合）
-- ボタンのイベントコードは MovinkPad Pro 14 + Pro Pen 3 の実測値です。他デバイスでは異なる可能性があります
-- キーマッピングはアプリ内で自由にカスタマイズ可能です
+- Shizuku must be restarted after each device reboot (unless rooted)
+- Button event codes are based on the MovinkPad Pro 14 + Pro Pen 3. Other devices may use different codes
+- All button mappings are fully customizable within the app
 
-## ビルド環境
+## Build Environment
 
 - Android Studio
 - compileSdk 34 / minSdk 26 / targetSdk 34
 - Shizuku API 13.1.5
 - Java 11
+- CMake 3.22.1 (for native code)
 
-## ライセンス
+## License
 
 MIT
